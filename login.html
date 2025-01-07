@@ -95,7 +95,7 @@
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
                 authority: "https://login.microsoftonline.com/0989912c-791b-4645-b147-b80ee1c93628",
-                redirectUri: window.location.origin + window.location.pathname
+                redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
             },
             cache: {
                 cacheLocation: "sessionStorage",
@@ -105,29 +105,36 @@
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        // Check if user is already logged in
-        window.addEventListener('load', async () => {
-            const accounts = msalInstance.getAllAccounts();
-            if (accounts.length > 0) {
-                // User is already logged in, redirect to index
-                window.location.href = 'index.html';
-            }
-        });
+        // Add console logs for debugging
+        console.log("Starting login process...");
 
         // Handle login button click
         document.getElementById('loginButton').addEventListener('click', async () => {
             try {
+                console.log("Login button clicked");
                 const response = await msalInstance.loginPopup({
                     scopes: ["User.Read"]
                 });
                 
+                console.log("Login response:", response);
                 if (response) {
-                    // Successfully logged in
+                    console.log("Login successful, redirecting to index.html");
                     window.location.href = 'index.html';
                 }
             } catch (error) {
-                console.error(error);
+                console.error("Login error:", error);
                 alert('Login failed. Please try again.');
+            }
+        });
+
+        // Check if user is already logged in
+        window.addEventListener('load', async () => {
+            console.log("Checking login status...");
+            const accounts = msalInstance.getAllAccounts();
+            console.log("Found accounts:", accounts);
+            if (accounts.length > 0) {
+                console.log("User already logged in, redirecting to index.html");
+                window.location.href = 'index.html';
             }
         });
     </script>
