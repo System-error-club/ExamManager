@@ -398,23 +398,31 @@
                 const examData = JSON.parse(localStorage.getItem('examData') || '[]');
                 const examIndex = document.getElementById('examModal').dataset.examIndex;
                 
-                // Simpler resource processing
-                const resources = (document.getElementById('resources').value || '')
-                    .split('\n')
-                    .filter(line => line.trim())
-                    .map(line => {
-                        const parts = line.split('|');
-                        if (parts.length >= 2) {
-                            return {
-                                name: parts[0].trim() || 'Resource',
-                                url: parts[1].trim() || '#'
-                            };
+                // Safe resource processing
+                let resources = [];
+                const resourcesText = document.getElementById('resources').value || '';
+                
+                if (resourcesText) {
+                    const lines = resourcesText.split('\n');
+                    resources = lines.reduce((acc, line) => {
+                        const trimmedLine = String(line).trim();
+                        if (trimmedLine) {
+                            if (trimmedLine.includes('|')) {
+                                const [name, ...urlParts] = trimmedLine.split('|');
+                                acc.push({
+                                    name: String(name).trim() || 'Resource',
+                                    url: urlParts.join('|').trim() || '#'
+                                });
+                            } else {
+                                acc.push({
+                                    name: trimmedLine,
+                                    url: '#'
+                                });
+                            }
                         }
-                        return {
-                            name: line.trim(),
-                            url: '#'
-                        };
-                    });
+                        return acc;
+                    }, []);
+                }
 
                 const newExam = {
                     examWeek: parseInt(document.getElementById('examWeek').value),
@@ -432,11 +440,15 @@
 
                 localStorage.setItem('examData', JSON.stringify(examData));
                 closeModal();
-                setTimeout(() => {
-                    loadExams();
-                }, 100);
+                loadExams();
+                window.location.reload();
             } catch (error) {
                 console.error('Error saving exam:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    value: document.getElementById('resources').value
+                });
                 alert('Error saving exam. Please try again.');
             }
         });
