@@ -227,7 +227,12 @@
                 </div>
                 <div class="form-group">
                     <label for="resources">Resources (One per line, format: Resource Name|URL):</label>
-                    <small style="color: #666; display: block; margin-bottom: 0.5rem;">Example: Khan Academy|https://www.khanacademy.org</small>
+                    <small style="color: #666; display: block; margin-bottom: 0.5rem;">
+                        Examples:<br>
+                        Khan Academy|https://www.khanacademy.org<br>
+                        Practice Problems (no URL)<br>
+                        Study Guide|http://example.com/guide
+                    </small>
                     <textarea id="resources" rows="4"></textarea>
                 </div>
                 <div class="form-group">
@@ -359,7 +364,13 @@
                 document.getElementById('date').value = exam.date;
                 document.getElementById('chapters').value = exam.chapters;
                 document.getElementById('resources').value = exam.resources
-                    .map(r => `${r.name || 'Resource'}|${r.url || '#'}`).join('\n');
+                    .map(r => {
+                        if (r.url === '#') {
+                            return r.name;
+                        }
+                        return `${r.name}|${r.url}`;
+                    })
+                    .join('\n');
                 
                 modalTitle.textContent = 'Edit Exam';
                 modal.dataset.examIndex = examIndex;
@@ -392,12 +403,20 @@
                 const resources = resourcesText
                     ? resourcesText
                         .split('\n')
-                        .filter(line => line && line.trim()) // Only process non-empty lines
+                        .filter(line => line && line.trim()) // Remove empty lines
                         .map(line => {
-                            const parts = line.split('|');
+                            if (!line.includes('|')) {
+                                // If line doesn't contain separator, treat whole line as name
+                                return {
+                                    name: line.trim(),
+                                    url: '#'
+                                };
+                            }
+                            // Split at first | character
+                            const [name, ...urlParts] = line.split('|');
                             return {
-                                name: parts[0] ? parts[0].trim() : 'Resource',
-                                url: parts[1] ? parts[1].trim() : '#'
+                                name: (name || '').trim() || 'Resource',
+                                url: urlParts.join('|').trim() || '#'
                             };
                         })
                     : [];
