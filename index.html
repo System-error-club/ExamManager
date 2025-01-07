@@ -4,87 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExamManager - Dashboard</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: #f5f5f5;
-        }
-
-        .navbar {
-            background-color: #2F2F2F;
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-        }
-
-        .nav-link, .login-btn {
-            color: white;
-            text-decoration: none;
-            padding: 0.5rem 1rem;
-            border-radius: 4px;
-        }
-
-        .login-btn {
-            border: 1px solid white;
-        }
-
-        .login-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .main-content {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .countdown-section {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .exam-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .exam-card {
-            background: white;
-            padding: 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-
-        .exam-card h3 {
-            margin-top: 0;
-            color: #333;
-        }
-
-        .resources-list {
-            list-style: none;
-            padding: 0;
-        }
-
-        .resources-list a {
-            color: #0066cc;
-            text-decoration: none;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
 </head>
 <body>
@@ -114,8 +34,9 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/consumers",
+                authority: "https://login.microsoftonline.com/common",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
+                navigateToLoginRequestUrl: true
             },
             cache: {
                 cacheLocation: "sessionStorage",

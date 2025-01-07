@@ -4,75 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ExamManager - Login</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            background-color: #f5f5f5;
-        }
-
-        .login-container {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 1.5rem;
-        }
-
-        .login-description {
-            color: #666;
-            margin-bottom: 2rem;
-            font-size: 0.9rem;
-        }
-
-        .ms-login-btn {
-            background-color: #2F2F2F;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            font-size: 16px;
-            transition: background-color 0.2s;
-        }
-
-        .ms-login-btn:hover {
-            background-color: #404040;
-        }
-
-        .ms-icon {
-            width: 24px;
-            height: 24px;
-        }
-
-        .back-link {
-            display: inline-block;
-            margin-top: 1rem;
-            color: #0066cc;
-            text-decoration: none;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
 </head>
 <body>
@@ -94,8 +26,9 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/consumers",
+                authority: "https://login.microsoftonline.com/common",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
+                navigateToLoginRequestUrl: true
             },
             cache: {
                 cacheLocation: "sessionStorage",
@@ -116,18 +49,16 @@
                     scopes: ["User.Read"],
                 };
 
-                const response = await msalInstance.loginRedirect(loginRequest);
-                console.log("Login response:", response);
+                // Use popup login instead of redirect
+                const response = await msalInstance.loginPopup(loginRequest);
+                console.log("Login successful:", response);
                 
-                // Handle the redirect response
-                msalInstance.handleRedirectPromise().then((response) => {
-                    if (response) {
-                        console.log("Redirect response:", response);
-                        window.location.href = 'index.html';
-                    }
-                }).catch(error => {
-                    console.error("Redirect error:", error);
-                });
+                if (response) {
+                    // Store the account info
+                    const account = response.account;
+                    console.log("Account:", account);
+                    window.location.href = 'index.html';
+                }
             } catch (error) {
                 console.error("Login error details:", {
                     errorMessage: error.message,
@@ -142,11 +73,15 @@
         // Check if user is already logged in
         window.addEventListener('load', async () => {
             console.log("Checking login status...");
-            const accounts = msalInstance.getAllAccounts();
-            console.log("Found accounts:", accounts);
-            if (accounts.length > 0) {
-                console.log("User already logged in, redirecting to index.html");
-                window.location.href = 'index.html';
+            try {
+                const accounts = msalInstance.getAllAccounts();
+                console.log("Found accounts:", accounts);
+                if (accounts.length > 0) {
+                    console.log("User already logged in, redirecting to index.html");
+                    window.location.href = 'index.html';
+                }
+            } catch (error) {
+                console.error("Error checking login status:", error);
             }
         });
     </script>
