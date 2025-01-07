@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamManager - Login</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f5f5;
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+        }
+
+        .ms-login-btn {
+            background-color: #2F2F2F;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .ms-login-btn:hover {
+            background-color: #404040;
+        }
+
+        .ms-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .login-description {
+            color: #666;
+            margin-bottom: 2rem;
+            font-size: 0.9rem;
+        }
+    </style>
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+</head>
+<body>
+    <div class="login-container">
+        <h1>ExamManager</h1>
+        <p class="login-description">
+            Access your exam schedule, study materials, and more with your Microsoft account.
+        </p>
+        <button class="ms-login-btn">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/20px-Microsoft_logo.svg.png" 
+                 alt="Microsoft logo" 
+                 class="ms-icon">
+            Sign in with Microsoft
+        </button>
+    </div>
+    <script>
+        const msalConfig = {
+            auth: {
+                clientId: "b0b2e0e0-0e0e-0e0e-0e0e-0e0e0e0e0e0e", // Replace with your actual client ID
+                authority: "https://login.microsoftonline.com/f9c1c9e0-0e0e-0e0e-0e0e-0e0e0e0e0e0e", // Replace with your tenant ID
+                redirectUri: window.location.origin,
+            },
+            cache: {
+                cacheLocation: "sessionStorage",
+                storeAuthStateInCookie: false,
+            }
+        };
+
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Handle the Microsoft login button click
+        document.querySelector('.ms-login-btn').addEventListener('click', async () => {
+            try {
+                const loginResponse = await msalInstance.loginPopup({
+                    scopes: ["User.Read"]
+                });
+                
+                if (loginResponse) {
+                    // Get user info
+                    const account = msalInstance.getActiveAccount();
+                    
+                    // Redirect to main application page after successful login
+                    window.location.href = '/dashboard.html';
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Login failed. Please try again.');
+            }
+        });
+
+        // Check if user is already logged in
+        window.addEventListener('load', async () => {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                msalInstance.setActiveAccount(accounts[0]);
+                window.location.href = '/dashboard.html';
+            }
+        });
+    </script>
+</body>
+</html> 

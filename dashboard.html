@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamManager - Dashboard</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+
+        .navbar {
+            background-color: #2F2F2F;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logout-btn {
+            background: none;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .countdown-section {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .countdown-text {
+            font-size: 1.5rem;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .exam-info-section {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .exam-card {
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 1rem;
+        }
+
+        .exam-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .resources-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resources-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .resources-list a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .admin-controls {
+            margin-bottom: 1rem;
+        }
+
+        .edit-btn {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .edit-btn:hover {
+            background-color: #0052a3;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+    </style>
+    <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-js-sdk.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>ExamManager</h1>
+        <div class="user-info">
+            <span id="userName">Loading...</span>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="countdown-section">
+            <h2 class="countdown-text">Next Exams:</h2>
+            <div id="examCountdown">Calculating...</div>
+        </div>
+
+        <div class="exam-info-section">
+            <h2>Upcoming Exams</h2>
+            <div class="exam-grid" id="examGrid">
+                <!-- Exam cards will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <h2>Edit Exam</h2>
+            <form id="editExamForm">
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="date">Date:</label>
+                    <input type="date" id="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="chapters">Chapters:</label>
+                    <input type="text" id="chapters" required>
+                </div>
+                <div class="form-group">
+                    <label for="resources">Resources (One per line):</label>
+                    <textarea id="resources" rows="4"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" onclick="closeEditModal()" class="logout-btn">Cancel</button>
+                    <button type="submit" class="edit-btn">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const msalConfig = {
+            auth: {
+                clientId: "your-actual-client-id",
+                authority: "https://login.microsoftonline.com/your-tenant-id",
+                redirectUri: window.location.origin,
+            },
+            cache: {
+                cacheLocation: "sessionStorage",
+                storeAuthStateInCookie: false,
+            }
+        };
+
+        const graphConfig = {
+            graphMeEndpoint: "https://graph.microsoft.com/v1.0/me",
+            graphMemberOfEndpoint: "https://graph.microsoft.com/v1.0/me/memberOf",
+            adminGroupId: "YOUR_ADMIN_GROUP_ID" // Replace with your Azure AD admin group ID
+        };
+
+        const loginRequest = {
+            scopes: ["User.Read", "Group.Read.All"]
+        };
+
+        let isAdmin = false;
+        const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Data management functions
+        function saveExamData(data) {
+            localStorage.setItem('examData', JSON.stringify(data));
+        }
+
+        function loadStoredExamData() {
+            const stored = localStorage.getItem('examData');
+            if (stored) {
+                return JSON.parse(stored);
+            }
+            return defaultExamData; // Fallback to default data
+        }
+
+        // Replace the static examData with loaded data
+        const defaultExamData = [
+            {
+                subject: "Mathematics",
+                date: "2024-06-15",
+                chapters: "1-5",
+                resources: [
+                    { name: "Khan Academy - Calculus", url: "#" },
+                    { name: "Practice Problems PDF", url: "#" }
+                ]
+            },
+            {
+                subject: "Physics",
+                date: "2024-06-18",
+                chapters: "Mechanics, Thermodynamics",
+                resources: [
+                    { name: "Physics Lab Notes", url: "#" },
+                    { name: "Video Tutorials", url: "#" }
+                ]
+            }
+        ];
+
+        let examData = loadStoredExamData();
+
+        window.addEventListener('load', async () => {
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length === 0) {
+                window.location.href = '/index.html';
+                return;
+            }
+
+            try {
+                msalInstance.setActiveAccount(accounts[0]);
+                const account = accounts[0];
+                document.getElementById('userName').textContent = account.name;
+                
+                await checkAdminStatus(account);
+                loadExamData();
+                requestNotificationPermission();
+                scheduleExamNotifications();
+            } catch (error) {
+                console.error('Error during initialization:', error);
+                alert('Failed to load user data. Please try logging in again.');
+                logout();
+            }
+        });
+
+        async function checkAdminStatus(account) {
+            try {
+                // Get access token for Graph API
+                const response = await msalInstance.acquireTokenSilent({
+                    ...loginRequest,
+                    account: account
+                });
+
+                // Create Graph client
+                const client = MicrosoftGraph.Client.init({
+                    authProvider: (done) => {
+                        done(null, response.accessToken);
+                    }
+                });
+
+                // Get user's group memberships
+                const groups = await client.api('/me/memberOf').get();
+                
+                // Check if user is in admin group
+                isAdmin = groups.value.some(group => 
+                    group.id === graphConfig.adminGroupId
+                );
+
+                // Update UI based on admin status
+                if (isAdmin) {
+                    document.querySelector('.user-info').classList.add('admin-user');
+                }
+
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+                isAdmin = false;
+            }
+        }
+
+        function logout() {
+            msalInstance.logoutPopup()
+                .then(() => {
+                    window.location.href = '/index.html';
+                })
+                .catch(error => {
+                    console.error('Logout error:', error);
+                    window.location.href = '/index.html';
+                });
+        }
+
+        function loadExamData() {
+            const examGrid = document.getElementById('examGrid');
+            examGrid.innerHTML = examData.map((exam, index) => `
+                <div class="exam-card">
+                    <h3>${exam.subject}</h3>
+                    <p><strong>Date:</strong> ${exam.date}</p>
+                    <p><strong>Chapters:</strong> ${exam.chapters}</p>
+                    <h4>Resources:</h4>
+                    <ul class="resources-list">
+                        ${exam.resources.map(resource => `
+                            <li><a href="${resource.url}" target="_blank">${resource.name}</a></li>
+                        `).join('')}
+                    </ul>
+                    ${isAdmin ? `<button class="edit-btn" onclick="openEditModal(${index})">Edit</button>` : ''}
+                </div>
+            `).join('');
+
+            updateCountdown();
+        }
+
+        function updateCountdown() {
+            try {
+                const nextExam = new Date(examData[0].date);
+                const today = new Date();
+                
+                if (isNaN(nextExam.getTime())) {
+                    throw new Error('Invalid exam date');
+                }
+
+                const diffTime = Math.abs(nextExam - today);
+                const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+                
+                document.getElementById('examCountdown').textContent = 
+                    `${diffWeeks} weeks until ${examData[0].subject} exam`;
+            } catch (error) {
+                console.error('Error updating countdown:', error);
+                document.getElementById('examCountdown').textContent = 
+                    'No upcoming exams scheduled';
+            }
+        }
+
+        function openEditModal(examIndex) {
+            const exam = examData[examIndex];
+            document.getElementById('subject').value = exam.subject;
+            document.getElementById('date').value = exam.date;
+            document.getElementById('chapters').value = exam.chapters;
+            document.getElementById('resources').value = exam.resources
+                .map(r => `${r.name}|${r.url}`).join('\n');
+            
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'flex';
+            
+            // Store the exam index for saving
+            modal.dataset.examIndex = examIndex;
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+
+        // Add event listener for the edit form
+        document.getElementById('editExamForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const examIndex = document.getElementById('editModal').dataset.examIndex;
+            
+            // Parse resources from textarea
+            const resourcesText = document.getElementById('resources').value;
+            const resources = resourcesText.split('\n')
+                .filter(line => line.trim())
+                .map(line => {
+                    const [name, url] = line.split('|');
+                    return { name: name.trim(), url: url.trim() };
+                });
+
+            // Update exam data
+            examData[examIndex] = {
+                subject: document.getElementById('subject').value,
+                date: document.getElementById('date').value,
+                chapters: document.getElementById('chapters').value,
+                resources: resources
+            };
+
+            // Save to localStorage
+            saveExamData(examData);
+
+            // Refresh the display
+            loadExamData();
+            closeEditModal();
+        });
+
+        // Add notification support
+        function requestNotificationPermission() {
+            if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        }
+
+        function scheduleExamNotifications() {
+            if (Notification.permission === "granted") {
+                examData.forEach(exam => {
+                    const examDate = new Date(exam.date);
+                    const weekBefore = new Date(examDate);
+                    weekBefore.setDate(weekBefore.getDate() - 7);
+
+                    // Schedule notification for a week before
+                    const timeUntilNotification = weekBefore - new Date();
+                    if (timeUntilNotification > 0) {
+                        setTimeout(() => {
+                            new Notification(`Upcoming Exam: ${exam.subject}`, {
+                                body: `Your ${exam.subject} exam is in one week!`,
+                                icon: '/favicon.ico'
+                            });
+                        }, timeUntilNotification);
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html> 
