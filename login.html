@@ -94,19 +94,13 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/common",
+                authority: "https://login.microsoftonline.com/consumers",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
             },
             cache: {
                 cacheLocation: "sessionStorage",
                 storeAuthStateInCookie: false,
             },
-            system: {
-                allowRedirectInIframe: true,
-                windowHashTimeout: 9000,
-                iframeHashTimeout: 9000,
-                loadFrameTimeout: 9000
-            }
         };
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -120,25 +114,20 @@
                 console.log("Login button clicked");
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "select_account",
-                    redirectStartPage: window.location.href
                 };
 
-                const response = await msalInstance.loginPopup(loginRequest);
+                const response = await msalInstance.loginRedirect(loginRequest);
                 console.log("Login response:", response);
                 
-                if (response) {
-                    // Store the account info
-                    const account = response.account;
-                    console.log("Account:", account);
-                    
-                    // Check if admin
-                    const isAdmin = account.username.toLowerCase() === "kangym727@gmail.com";
-                    console.log("Is admin:", isAdmin);
-                    
-                    console.log("Login successful, redirecting to index.html");
-                    window.location.href = 'index.html';
-                }
+                // Handle the redirect response
+                msalInstance.handleRedirectPromise().then((response) => {
+                    if (response) {
+                        console.log("Redirect response:", response);
+                        window.location.href = 'index.html';
+                    }
+                }).catch(error => {
+                    console.error("Redirect error:", error);
+                });
             } catch (error) {
                 console.error("Login error details:", {
                     errorMessage: error.message,
