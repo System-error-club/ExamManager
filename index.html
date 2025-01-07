@@ -147,8 +147,25 @@
                 document.getElementById('loginBtn').style.display = 'inline';
                 document.getElementById('userName').style.display = 'none';
                 document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('manageLink').style.display = 'none';
+                window.location.reload(); // Refresh the page to reset all states
             });
         }
+
+        // Handle the redirect promise
+        msalInstance.handleRedirectPromise().then((response) => {
+            if (response) {
+                const account = response.account;
+                const isAdmin = ["kangym727@gmail.com"].includes(account.username.toLowerCase());
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('userName').style.display = 'inline';
+                document.getElementById('logoutBtn').style.display = 'inline';
+                document.getElementById('userName').textContent = account.name;
+                document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
+            }
+        }).catch(error => {
+            console.error(error);
+        });
 
         // Load and display exam data
         function loadExamData() {
