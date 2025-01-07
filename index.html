@@ -134,10 +134,22 @@
             const nextExam = new Date(examData[0].date);
             const today = new Date();
             const diffTime = Math.abs(nextExam - today);
-            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+            // Calculate differences in various units
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            const diffWeeks = Math.floor(diffDays / 7);
+            const diffMonths = Math.floor(diffDays / 30);
+            
+            let timeMessage;
+            if (diffMonths >= 1) {
+                timeMessage = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+            } else if (diffWeeks >= 1) {
+                timeMessage = `${diffWeeks} week${diffWeeks > 1 ? 's' : ''}`;
+            } else {
+                timeMessage = `${diffDays} day${diffDays > 1 ? 's' : ''}`;
+            }
             
             document.getElementById('examCountdown').textContent = 
-                `${diffWeeks} weeks until ${examData[0].subject} exam`;
+                `${timeMessage} until ${examData[0].subject} exam`;
         }
 
         // Default exam data
