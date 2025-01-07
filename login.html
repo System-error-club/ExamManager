@@ -26,8 +26,10 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/common",
+                authority: "https://login.microsoftonline.com/keizerkarelcollege.nl",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
+                validateAuthority: true,
+                navigateToLoginRequestUrl: true
             },
             cache: {
                 cacheLocation: "sessionStorage",
@@ -44,21 +46,19 @@
         document.getElementById('loginButton').addEventListener('click', async () => {
             try {
                 console.log("Login button clicked");
-                // Clear any existing sessions
-                sessionStorage.clear();
-                msalInstance.clearCache();
 
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "select_account"
+                    prompt: "login"
                 };
 
-                // Use redirect instead of popup
-                await msalInstance.loginRedirect(loginRequest);
+                const response = await msalInstance.loginPopup(loginRequest);
+                if (response) {
+                    console.log("Login successful:", response);
+                    window.location.href = 'index.html';
+                }
             } catch (error) {
                 console.error("Login failed:", error.message);
-                sessionStorage.clear();
-                msalInstance.clearCache();
                 alert('Login failed. Please try again.');
             }
         });
@@ -67,13 +67,6 @@
         window.addEventListener('load', async () => {
             console.log("Checking login status...");
             try {
-                // Handle redirect response
-                const response = await msalInstance.handleRedirectPromise();
-                if (response) {
-                    console.log("Redirect response:", response);
-                    window.location.href = 'index.html';
-                }
-
                 const accounts = msalInstance.getAllAccounts();
                 console.log("Found accounts:", accounts);
                 if (accounts.length > 0) {
@@ -82,8 +75,6 @@
                 }
             } catch (error) {
                 console.error("Error checking login status:", error);
-                sessionStorage.clear();
-                msalInstance.clearCache();
             }
         });
     </script>
