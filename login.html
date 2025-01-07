@@ -96,7 +96,7 @@
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
                 authority: "https://login.microsoftonline.com/0989912c-791b-4645-b147-b80ee1c93628",
                 redirectUri: "https://system-error-club.github.io/ExamManager/login.html",
-                navigateToLoginRequestUrl: true,
+                navigateToLoginRequestUrl: false,
                 postLogoutRedirectUri: "https://system-error-club.github.io/ExamManager/index.html"
             },
             cache: {
@@ -110,7 +110,8 @@
         // Handle the redirect promise
         msalInstance.handleRedirectPromise().then((response) => {
             if (response) {
-                window.location.href = 'manage.html';
+                // Successfully logged in, redirect to index
+                window.location.href = 'index.html';
             }
         }).catch(error => {
             console.error(error);
@@ -120,18 +121,17 @@
         window.addEventListener('load', async () => {
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length > 0) {
-                // User is already logged in, redirect to manage page
-                window.location.href = 'manage.html';
+                // User is already logged in, redirect to index
+                window.location.href = 'index.html';
             }
         });
 
         // Handle login button click
         document.getElementById('loginButton').addEventListener('click', async () => {
             try {
-                const loginResponse = await msalInstance.loginRedirect({
+                await msalInstance.loginRedirect({
                     scopes: ["User.Read"]
                 });
-                
             } catch (error) {
                 console.error(error);
                 alert('Login failed. Please try again.');
