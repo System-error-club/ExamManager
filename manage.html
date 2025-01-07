@@ -39,6 +39,22 @@
                 <!-- Exam items will be loaded here -->
             </div>
         </div>
+        <div class="admin-controls" id="adminManagementSection" style="display: none;">
+            <h2>Admin Management</h2>
+            <div class="form-group">
+                <label for="newAdminEmail">Add New Admin Email:</label>
+                <div class="admin-input-group">
+                    <input type="email" id="newAdminEmail" placeholder="Enter email address">
+                    <button class="btn btn-add" onclick="addNewAdmin()">Add Admin</button>
+                </div>
+            </div>
+            <div class="current-admins">
+                <h3>Current Admins:</h3>
+                <div id="adminList">
+                    <!-- Admin list will be populated here -->
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Edit/Add Modal -->
@@ -147,9 +163,12 @@
         function updateUIForAuth() {
             if (isAdmin) {
                 document.getElementById('unauthorizedMessage').style.display = 'none';
+                document.getElementById('adminManagementSection').style.display = 'block';
                 enableControls();
+                loadAdminList(); // Load admin list when authorized
             } else {
                 document.getElementById('unauthorizedMessage').style.display = 'block';
+                document.getElementById('adminManagementSection').style.display = 'none';
                 disableControls();
             }
         }
@@ -312,6 +331,64 @@
             sessionStorage.clear();
             // Redirect to index page
             window.location.href = 'index.html';
+        }
+
+        // Admin management functions
+        function loadAdminList() {
+            const storedAdmins = localStorage.getItem('adminEmails');
+            const adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
+                "kangym727@gmail.com",
+                "8250@leerling.keizerkarelcollege.nl"
+            ];
+
+            const adminList = document.getElementById('adminList');
+            adminList.innerHTML = adminEmails.map(email => `
+                <div class="admin-item">
+                    <span>${email}</span>
+                    ${email !== "kangym727@gmail.com" ? 
+                        `<button class="btn btn-delete" onclick="removeAdmin('${email}')">Remove</button>` : 
+                        '<span>(Primary Admin)</span>'
+                    }
+                </div>
+            `).join('');
+        }
+
+        function addNewAdmin() {
+            const newEmail = document.getElementById('newAdminEmail').value.trim().toLowerCase();
+            if (!newEmail) {
+                alert('Please enter an email address');
+                return;
+            }
+
+            const storedAdmins = localStorage.getItem('adminEmails');
+            const adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
+                "kangym727@gmail.com",
+                "8250@leerling.keizerkarelcollege.nl"
+            ];
+
+            if (adminEmails.includes(newEmail)) {
+                alert('This email is already an admin');
+                return;
+            }
+
+            adminEmails.push(newEmail);
+            localStorage.setItem('adminEmails', JSON.stringify(adminEmails));
+            document.getElementById('newAdminEmail').value = '';
+            loadAdminList();
+        }
+
+        function removeAdmin(email) {
+            if (!confirm(`Are you sure you want to remove ${email} as an admin?`)) return;
+
+            const storedAdmins = localStorage.getItem('adminEmails');
+            let adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
+                "kangym727@gmail.com",
+                "8250@leerling.keizerkarelcollege.nl"
+            ];
+
+            adminEmails = adminEmails.filter(e => e !== email);
+            localStorage.setItem('adminEmails', JSON.stringify(adminEmails));
+            loadAdminList();
         }
     </script>
 </body>

@@ -268,4 +268,34 @@ select {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 0.9rem;
+}
+
+/* Admin management styles */
+.admin-input-group {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.admin-input-group input {
+    flex: 1;
+}
+
+.current-admins {
+    margin-top: 2rem;
+}
+
+.admin-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    background: #1a1f2e;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.admin-item button {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
 } 
