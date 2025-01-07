@@ -318,7 +318,7 @@
             const weekFilter = document.getElementById('weekFilter').value;
             
             // Sort exams by week and date
-            const sortedExams = examData.sort((a, b) => {
+            const sortedExams = [...examData].sort((a, b) => {
                 if (a.examWeek !== b.examWeek) {
                     return a.examWeek - b.examWeek;
                 }
@@ -337,8 +337,8 @@
                     <p><strong>Date:</strong> ${exam.date}</p>
                     <p><strong>Chapters:</strong> ${exam.chapters}</p>
                     <div class="action-buttons">
-                        <button class="btn btn-edit" onclick="editExam(${index})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
-                        <button class="btn btn-delete" onclick="deleteExam(${index})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                        <button class="btn btn-edit" onclick="editExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
+                        <button class="btn btn-delete" onclick="deleteExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
                     </div>
                 </div>
             `).join('');
@@ -378,37 +378,42 @@
         // Event Listeners
         document.getElementById('addExamBtn').addEventListener('click', () => openModal());
 
-        document.getElementById('examForm').addEventListener('submit', function(e) {
+        document.getElementById('examForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             if (!isAdmin) return;
 
-            const examData = JSON.parse(localStorage.getItem('examData') || '[]');
-            const examIndex = document.getElementById('examModal').dataset.examIndex;
-            
-            const newExam = {
-                examWeek: parseInt(document.getElementById('examWeek').value),
-                subject: document.getElementById('subject').value,
-                date: document.getElementById('date').value,
-                chapters: document.getElementById('chapters').value,
-                resources: document.getElementById('resources').value
-                    .split('\n')
-                    .filter(line => line.trim())
-                    .map(line => {
-                        const [name, url] = line.split('|');
-                        return { name: name.trim(), url: url.trim() };
-                    })
-            };
+            try {
+                const examData = JSON.parse(localStorage.getItem('examData') || '[]');
+                const examIndex = document.getElementById('examModal').dataset.examIndex;
+                
+                const newExam = {
+                    examWeek: parseInt(document.getElementById('examWeek').value),
+                    subject: document.getElementById('subject').value,
+                    date: document.getElementById('date').value,
+                    chapters: document.getElementById('chapters').value,
+                    resources: document.getElementById('resources').value
+                        .split('\n')
+                        .filter(line => line.trim())
+                        .map(line => {
+                            const [name, url] = line.split('|');
+                            return { name: name.trim(), url: url.trim() || '#' };
+                        })
+                };
 
-            if (examIndex === undefined) {
-                examData.push(newExam);
-            } else {
-                examData[examIndex] = newExam;
+                if (examIndex === undefined) {
+                    examData.push(newExam);
+                } else {
+                    examData[parseInt(examIndex)] = newExam;
+                }
+
+                localStorage.setItem('examData', JSON.stringify(examData));
+                closeModal();
+                await new Promise(resolve => setTimeout(resolve, 100)); // Small delay before reload
+                window.location.reload();
+            } catch (error) {
+                console.error('Error saving exam:', error);
+                alert('Error saving exam. Please try again.');
             }
-
-            localStorage.setItem('examData', JSON.stringify(examData));
-            loadExams();
-            closeModal();
-            window.location.reload(); // Refresh to show changes
         });
 
         function editExam(index) {
@@ -424,6 +429,7 @@
             examData.splice(index, 1);
             localStorage.setItem('examData', JSON.stringify(examData));
             loadExams();
+            window.location.reload(); // Refresh to show changes
         }
 
         function logout() {
