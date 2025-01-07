@@ -95,14 +95,13 @@
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
                 authority: "https://login.microsoftonline.com/0989912c-791b-4645-b147-b80ee1c93628",
-                redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
+                redirectUri: "https://system-error-club.github.io/ExamManager/",
                 navigateToLoginRequestUrl: true,
                 validateAuthority: true,
             },
             cache: {
                 cacheLocation: "sessionStorage",
                 storeAuthStateInCookie: false,
-                secureCookies: true
             },
             system: {
                 loggerOptions: {
@@ -111,7 +110,11 @@
                     },
                     piiLoggingEnabled: false,
                     logLevel: "Info"
-                }
+                },
+                windowHashTimeout: 60000,
+                iframeHashTimeout: 6000,
+                loadFrameTimeout: 0,
+                asyncPopups: false
             }
         };
 
@@ -127,7 +130,8 @@
                 // Add more detailed login options
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "select_account"
+                    prompt: "login",
+                    domainHint: "consumers"
                 };
 
                 const response = await msalInstance.loginPopup(loginRequest);
@@ -144,7 +148,7 @@
                     errorStack: error.stack,
                     fullError: error
                 });
-                alert('Login failed. Please try again.');
+                alert(`Login failed: ${error.message}`);
             }
         });
 
