@@ -398,28 +398,23 @@
                 const examData = JSON.parse(localStorage.getItem('examData') || '[]');
                 const examIndex = document.getElementById('examModal').dataset.examIndex;
                 
-                // Process resources with error handling
-                const resourcesText = document.getElementById('resources').value;
-                const resources = resourcesText
-                    ? resourcesText
-                        .split('\n')
-                        .filter(line => line && line.trim()) // Remove empty lines
-                        .map(line => {
-                            if (!line.includes('|')) {
-                                // If line doesn't contain separator, treat whole line as name
-                                return {
-                                    name: line.trim(),
-                                    url: '#'
-                                };
-                            }
-                            // Split at first | character
-                            const [name, ...urlParts] = line.split('|');
+                // Simpler resource processing
+                const resources = (document.getElementById('resources').value || '')
+                    .split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        const parts = line.split('|');
+                        if (parts.length >= 2) {
                             return {
-                                name: (name || '').trim() || 'Resource',
-                                url: urlParts.join('|').trim() || '#'
+                                name: parts[0].trim() || 'Resource',
+                                url: parts[1].trim() || '#'
                             };
-                        })
-                    : [];
+                        }
+                        return {
+                            name: line.trim(),
+                            url: '#'
+                        };
+                    });
 
                 const newExam = {
                     examWeek: parseInt(document.getElementById('examWeek').value),
@@ -437,7 +432,9 @@
 
                 localStorage.setItem('examData', JSON.stringify(examData));
                 closeModal();
-                window.location.reload();
+                setTimeout(() => {
+                    loadExams();
+                }, 100);
             } catch (error) {
                 console.error('Error saving exam:', error);
                 alert('Error saving exam. Please try again.');
@@ -453,11 +450,17 @@
             if (!isAdmin) return;
             if (!confirm('Are you sure you want to delete this exam?')) return;
 
-            const examData = JSON.parse(localStorage.getItem('examData') || '[]');
-            examData.splice(index, 1);
-            localStorage.setItem('examData', JSON.stringify(examData));
-            loadExams();
-            window.location.reload(); // Refresh to show changes
+            try {
+                const examData = JSON.parse(localStorage.getItem('examData') || '[]');
+                examData.splice(index, 1);
+                localStorage.setItem('examData', JSON.stringify(examData));
+                setTimeout(() => {
+                    loadExams();
+                }, 100);
+            } catch (error) {
+                console.error('Error deleting exam:', error);
+                alert('Error deleting exam. Please try again.');
+            }
         }
 
         function logout() {

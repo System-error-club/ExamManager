@@ -100,7 +100,7 @@
 
     <div class="main-content">
         <div class="countdown-section">
-            <h2>Next Exams</h2>
+            <h2>Next Examss</h2>
             <div id="examCountdown">Loading...</div>
         </div>
 
@@ -183,7 +183,7 @@
             const examGrid = document.getElementById('examGrid');
             examGrid.innerHTML = examData.map(exam => `
                 <div class="exam-card">
-                    <h3>${exam.subject}</h3>
+                    <h3>Week ${exam.examWeek} - ${exam.subject}</h3>
                     <p><strong>Date:</strong> ${exam.date}</p>
                     <p><strong>Chapters:</strong> ${exam.chapters}</p>
                     <h4>Resources:</h4>
