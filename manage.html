@@ -151,9 +151,9 @@
 </head>
 <body>
     <nav class="navbar">
-        <h1>ExamManager</h1>
+        <h1><a href="index.html" style="color: white; text-decoration: none;">ExamManager</a></h1>
         <div class="nav-links">
-            <a href="index.html" class="nav-link">Dashboard</a>
+            <a href="index.html" class="nav-link">Back to Dashboard</a>
             <a href="login.html" class="login-btn" id="loginBtn">Login</a>
             <span id="userName" style="display: none;"></span>
             <button onclick="logout()" class="login-btn" id="logoutBtn" style="display: none;">Logout</button>
@@ -217,7 +217,7 @@
 
         // Admin users configuration
         const adminEmails = [
-            "admin@example.com" // Replace with actual admin email
+            "kangym727@gmail.com"
         ];
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -241,9 +241,14 @@
 
                 isAdmin = adminEmails.includes(account.username.toLowerCase());
                 updateUIForAuth();
+                
+                // Redirect non-admin users back to index
+                if (!isAdmin) {
+                    window.location.href = 'index.html';
+                }
             } else {
-                document.getElementById('unauthorizedMessage').style.display = 'block';
-                disableControls();
+                // Redirect to login if not logged in
+                window.location.href = 'login.html';
             }
         }
 

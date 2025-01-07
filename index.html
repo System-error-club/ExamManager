@@ -89,9 +89,9 @@
 </head>
 <body>
     <nav class="navbar">
-        <h1>ExamManager</h1>
+        <h1><a href="index.html" style="color: white; text-decoration: none;">ExamManager</a></h1>
         <div class="nav-links">
-            <a href="manage.html" class="nav-link">Manage Exams</a>
+            <a href="manage.html" class="nav-link" id="manageLink" style="display: none;">Manage Exams</a>
             <a href="login.html" class="login-btn" id="loginBtn">Login</a>
             <span id="userName" style="display: none;"></span>
             <button onclick="logout()" class="login-btn" id="logoutBtn" style="display: none;">Logout</button>
@@ -132,10 +132,13 @@
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length > 0) {
                 // User is logged in
+                const account = accounts[0];
+                const isAdmin = ["kangym727@gmail.com"].includes(account.username.toLowerCase());
                 document.getElementById('loginBtn').style.display = 'none';
                 document.getElementById('userName').style.display = 'inline';
                 document.getElementById('logoutBtn').style.display = 'inline';
-                document.getElementById('userName').textContent = accounts[0].name;
+                document.getElementById('userName').textContent = account.name;
+                document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
             }
         });
 
