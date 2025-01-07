@@ -226,7 +226,8 @@
                     <input type="text" id="chapters" required>
                 </div>
                 <div class="form-group">
-                    <label for="resources">Resources (One per line, format: name|url):</label>
+                    <label for="resources">Resources (One per line, format: Resource Name|URL):</label>
+                    <small style="color: #666; display: block; margin-bottom: 0.5rem;">Example: Khan Academy|https://www.khanacademy.org</small>
                     <textarea id="resources" rows="4"></textarea>
                 </div>
                 <div class="form-group">
@@ -358,7 +359,7 @@
                 document.getElementById('date').value = exam.date;
                 document.getElementById('chapters').value = exam.chapters;
                 document.getElementById('resources').value = exam.resources
-                    .map(r => `${r.name}|${r.url}`).join('\n');
+                    .map(r => `${r.name || 'Resource'}|${r.url || '#'}`).join('\n');
                 
                 modalTitle.textContent = 'Edit Exam';
                 modal.dataset.examIndex = examIndex;
@@ -386,18 +387,27 @@
                 const examData = JSON.parse(localStorage.getItem('examData') || '[]');
                 const examIndex = document.getElementById('examModal').dataset.examIndex;
                 
+                // Process resources with error handling
+                const resourcesText = document.getElementById('resources').value;
+                const resources = resourcesText
+                    ? resourcesText
+                        .split('\n')
+                        .filter(line => line && line.trim()) // Only process non-empty lines
+                        .map(line => {
+                            const parts = line.split('|');
+                            return {
+                                name: parts[0] ? parts[0].trim() : 'Resource',
+                                url: parts[1] ? parts[1].trim() : '#'
+                            };
+                        })
+                    : [];
+
                 const newExam = {
                     examWeek: parseInt(document.getElementById('examWeek').value),
                     subject: document.getElementById('subject').value,
                     date: document.getElementById('date').value,
                     chapters: document.getElementById('chapters').value,
-                    resources: document.getElementById('resources').value
-                        .split('\n')
-                        .filter(line => line.trim())
-                        .map(line => {
-                            const [name, url] = line.split('|');
-                            return { name: name.trim(), url: url.trim() || '#' };
-                        })
+                    resources: resources
                 };
 
                 if (examIndex === undefined) {
@@ -408,7 +418,6 @@
 
                 localStorage.setItem('examData', JSON.stringify(examData));
                 closeModal();
-                await new Promise(resolve => setTimeout(resolve, 100)); // Small delay before reload
                 window.location.reload();
             } catch (error) {
                 console.error('Error saving exam:', error);
