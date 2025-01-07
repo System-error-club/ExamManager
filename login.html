@@ -28,16 +28,26 @@
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
                 authority: "https://login.microsoftonline.com/keizerkarelcollege.nl",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
-                validateAuthority: true,
-                navigateToLoginRequestUrl: true
+                validateAuthority: false,
             },
             cache: {
                 cacheLocation: "sessionStorage",
                 storeAuthStateInCookie: false,
             },
+            system: {
+                allowRedirectInIframe: true,
+                windowHashTimeout: 9000,
+                iframeHashTimeout: 9000,
+                loadFrameTimeout: 9000
+            }
         };
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+        // Handle the redirect response first
+        msalInstance.handleRedirectPromise().catch(error => {
+            console.error("Handle redirect error:", error);
+        });
 
         // Add console logs for debugging
         console.log("Starting login process...");
@@ -46,21 +56,40 @@
         document.getElementById('loginButton').addEventListener('click', async () => {
             try {
                 console.log("Login button clicked");
+                // Check if there's an interaction in progress
+                if (msalInstance.getActiveAccount()) {
+                    console.log("Active account found, logging out first");
+                    await msalInstance.logoutPopup();
+                }
+
+                // Clear any ongoing interactions
+                const currentAccounts = msalInstance.getAllAccounts();
+                if (currentAccounts.length > 0) {
+                    console.log("Clearing existing accounts");
+                    sessionStorage.clear();
+                }
+
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "select_account",
-                    domain_hint: "keizerkarelcollege.nl"
+                    prompt: "login",
+                    domainHint: "keizerkarelcollege.nl"
                 };
 
+                // Try login with popup
+                console.log("Attempting login...");
                 const response = await msalInstance.loginPopup(loginRequest);
                 if (response) {
                     console.log("Login successful");
                     console.log("Account:", response.account);
+                    // Store the account
+                    sessionStorage.setItem('msalAccount', JSON.stringify(response.account));
                     window.location.href = 'index.html';
                 }
             } catch (error) {
                 console.error("Login failed:", error.message);
                 console.error("Full error:", error);
+                // Clear any stuck interactions
+                sessionStorage.clear();
                 alert('Login failed. Please try again.');
             }
         });
@@ -69,6 +98,8 @@
         window.addEventListener('load', async () => {
             console.log("Checking login status...");
             try {
+                // Handle any pending redirects first
+                await msalInstance.handleRedirectPromise();
                 const accounts = msalInstance.getAllAccounts();
                 console.log("Found accounts:", accounts);
                 if (accounts.length > 0) {
@@ -77,6 +108,7 @@
                 }
             } catch (error) {
                 console.error("Error checking login status:", error);
+                sessionStorage.clear();
             }
         });
     </script>
