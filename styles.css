@@ -2,16 +2,17 @@ body {
     font-family: 'Segoe UI', Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f5f5f5;
+    background-color: #1a1f2e;
 }
 
 .navbar {
-    background-color: #2F2F2F;
+    background-color: #242b3d;
     color: white;
     padding: 1rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    border-bottom: 1px solid #2d3548;
 }
 
 .nav-links {
@@ -44,10 +45,12 @@ body {
 }
 
 .countdown-section {
-    background-color: white;
+    background-color: #242b3d;
+    color: #e4e6eb;
     padding: 2rem;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    border: 1px solid #2d3548;
     text-align: center;
     margin-bottom: 2rem;
 }
@@ -59,15 +62,17 @@ body {
 }
 
 .exam-card {
-    background: white;
+    background: #242b3d;
+    color: #e4e6eb;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    border: 1px solid #2d3548;
 }
 
 .exam-card h3 {
     margin-top: 0;
-    color: #333;
+    color: white;
 }
 
 .resources-list {
@@ -76,7 +81,7 @@ body {
 }
 
 .resources-list a {
-    color: #0066cc;
+    color: #66b3ff;
     text-decoration: none;
 }
 
@@ -86,10 +91,12 @@ body {
 
 /* Management page specific styles */
 .admin-controls {
-    background: white;
+    background: #242b3d;
+    color: #e4e6eb;
     padding: 1.5rem;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    border: 1px solid #2d3548;
     margin-bottom: 2rem;
 }
 
@@ -157,11 +164,13 @@ body {
 }
 
 .modal-content {
-    background: white;
+    background: #242b3d;
+    color: #e4e6eb;
     padding: 2rem;
     border-radius: 8px;
     width: 90%;
     max-width: 600px;
+    border: 1px solid #2d3548;
 }
 
 .form-group {
@@ -178,30 +187,34 @@ body {
 .form-group select {
     width: 100%;
     padding: 0.5rem;
-    border: 1px solid #ddd;
+    border: 1px solid #2d3548;
     border-radius: 4px;
+    background: #1a1f2e;
+    color: #e4e6eb;
 }
 
 /* Login page specific styles */
 .login-container {
-    background-color: white;
+    background-color: #242b3d;
+    color: #e4e6eb;
     padding: 2rem;
     border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     text-align: center;
     max-width: 400px;
     width: 90%;
     margin: 2rem auto;
+    border: 1px solid #2d3548;
 }
 
 .login-description {
-    color: #666;
+    color: #a0a4ad;
     margin-bottom: 2rem;
     font-size: 0.9rem;
 }
 
 .ms-login-btn {
-    background-color: #2F2F2F;
+    background-color: #3a4257;
     color: white;
     border: none;
     padding: 12px 24px;
@@ -217,7 +230,7 @@ body {
 }
 
 .ms-login-btn:hover {
-    background-color: #404040;
+    background-color: #4a536b;
 }
 
 .ms-icon {
@@ -228,7 +241,7 @@ body {
 .back-link {
     display: inline-block;
     margin-top: 1rem;
-    color: #0066cc;
+    color: #66b3ff;
     text-decoration: none;
 }
 
