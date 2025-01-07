@@ -217,7 +217,8 @@
 
         // Admin users configuration
         const adminEmails = [
-            "kangym727@gmail.com"
+            "kangym727@gmail.com",
+            "8250@leerling.keizerkarelcollege.nl"
         ];
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
@@ -373,13 +374,10 @@
         }
 
         function logout() {
-            msalInstance.logoutPopup().then(() => {
-                document.getElementById('loginBtn').style.display = 'inline';
-                document.getElementById('userName').style.display = 'none';
-                document.getElementById('logoutBtn').style.display = 'none';
-                isAdmin = false;
-                updateUIForAuth();
-            });
+            // Clear session storage
+            sessionStorage.clear();
+            // Redirect to index page
+            window.location.href = 'index.html';
         }
     </script>
 </body>
