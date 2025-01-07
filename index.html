@@ -20,7 +20,7 @@
 
     <div class="main-content">
         <div class="countdown-section">
-            <h2>Next Examss</h2>
+            <h2>Next Exams</h2>
             <div id="examCountdown">Loading...</div>
         </div>
 
@@ -34,7 +34,7 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/consumers",
+                authority: "https://login.microsoftonline.com/common",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
             },
             cache: {
@@ -61,7 +61,12 @@
                     // User is logged in
                     const account = accounts[0];
                     console.log("Logged in user:", account);
-                    const isAdmin = ["kangym727@gmail.com", "8250@leerling.keizerkarelcollege.nl"].includes(account.username.toLowerCase());
+                    const userEmail = account.username.toLowerCase();
+                    const adminEmails = [
+                        "kangym727@gmail.com",
+                        "8250@leerling.keizerkarelcollege.nl"
+                    ].map(email => email.toLowerCase());
+                    const isAdmin = adminEmails.includes(userEmail);
                     console.log("Is admin:", isAdmin);
                     
                     document.getElementById('loginBtn').style.display = 'none';
