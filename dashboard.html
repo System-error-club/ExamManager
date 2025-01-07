@@ -155,6 +155,28 @@
             gap: 1rem;
             margin-top: 1rem;
         }
+
+        .admin-panel {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+        }
+
+        .add-exam-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 1rem;
+        }
+
+        .add-exam-btn:hover {
+            background-color: #218838;
+        }
     </style>
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@microsoft/microsoft-graph-client/lib/graph-js-sdk.js"></script>
@@ -178,6 +200,17 @@
             <h2>Upcoming Exams</h2>
             <div class="exam-grid" id="examGrid">
                 <!-- Exam cards will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <div id="adminPanel" class="admin-panel" style="display: none;">
+            <h2>Admin Panel</h2>
+            <button class="add-exam-btn" onclick="openAddExamModal()">Add New Exam</button>
+            <div class="admin-controls">
+                <h3>Manage Exams</h3>
+                <div id="adminExamList">
+                    <!-- Exam management interface will be loaded here -->
+                </div>
             </div>
         </div>
     </div>
@@ -213,9 +246,9 @@
     <script>
         const msalConfig = {
             auth: {
-                clientId: "your-actual-client-id",
-                authority: "https://login.microsoftonline.com/your-tenant-id",
-                redirectUri: window.location.origin,
+                clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
+                authority: "https://login.microsoftonline.com/0989912c-791b-4645-b147-b80ee1c93628",
+                redirectUri: "https://system-error-club.github.io/ExamManager/",
             },
             cache: {
                 cacheLocation: "sessionStorage",
@@ -226,7 +259,7 @@
         const graphConfig = {
             graphMeEndpoint: "https://graph.microsoft.com/v1.0/me",
             graphMemberOfEndpoint: "https://graph.microsoft.com/v1.0/me/memberOf",
-            adminGroupId: "YOUR_ADMIN_GROUP_ID" // Replace with your Azure AD admin group ID
+            adminGroupId: "" // Add the Object ID you copied from the admin group
         };
 
         const loginRequest = {
@@ -276,7 +309,8 @@
         window.addEventListener('load', async () => {
             const accounts = msalInstance.getAllAccounts();
             if (accounts.length === 0) {
-                window.location.href = '/index.html';
+                document.getElementById('loginSection').style.display = 'block';
+                document.getElementById('userSection').style.display = 'none';
                 return;
             }
 
@@ -284,60 +318,33 @@
                 msalInstance.setActiveAccount(accounts[0]);
                 const account = accounts[0];
                 document.getElementById('userName').textContent = account.name;
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('userSection').style.display = 'flex';
                 
                 await checkAdminStatus(account);
                 loadExamData();
-                requestNotificationPermission();
-                scheduleExamNotifications();
             } catch (error) {
                 console.error('Error during initialization:', error);
-                alert('Failed to load user data. Please try logging in again.');
+                alert('Failed to load user data. Please try again.');
                 logout();
             }
         });
 
-        async function checkAdminStatus(account) {
-            try {
-                // Get access token for Graph API
-                const response = await msalInstance.acquireTokenSilent({
-                    ...loginRequest,
-                    account: account
-                });
-
-                // Create Graph client
-                const client = MicrosoftGraph.Client.init({
-                    authProvider: (done) => {
-                        done(null, response.accessToken);
-                    }
-                });
-
-                // Get user's group memberships
-                const groups = await client.api('/me/memberOf').get();
-                
-                // Check if user is in admin group
-                isAdmin = groups.value.some(group => 
-                    group.id === graphConfig.adminGroupId
-                );
-
-                // Update UI based on admin status
-                if (isAdmin) {
-                    document.querySelector('.user-info').classList.add('admin-user');
-                }
-
-            } catch (error) {
-                console.error('Error checking admin status:', error);
-                isAdmin = false;
+        function checkAdminStatus(account) {
+            isAdmin = adminEmails.includes(account.username.toLowerCase());
+            if (isAdmin) {
+                document.getElementById('adminPanel').style.display = 'block';
             }
         }
 
         function logout() {
             msalInstance.logoutPopup()
                 .then(() => {
-                    window.location.href = '/index.html';
+                    window.location.href = 'index.html';
                 })
                 .catch(error => {
                     console.error('Logout error:', error);
-                    window.location.href = '/index.html';
+                    window.location.href = 'index.html';
                 });
         }
 
@@ -406,27 +413,28 @@
             e.preventDefault();
             const examIndex = document.getElementById('editModal').dataset.examIndex;
             
-            // Parse resources from textarea
-            const resourcesText = document.getElementById('resources').value;
-            const resources = resourcesText.split('\n')
-                .filter(line => line.trim())
-                .map(line => {
-                    const [name, url] = line.split('|');
-                    return { name: name.trim(), url: url.trim() };
-                });
-
-            // Update exam data
-            examData[examIndex] = {
+            const newExam = {
                 subject: document.getElementById('subject').value,
                 date: document.getElementById('date').value,
                 chapters: document.getElementById('chapters').value,
-                resources: resources
+                resources: document.getElementById('resources').value
+                    .split('\n')
+                    .filter(line => line.trim())
+                    .map(line => {
+                        const [name, url] = line.split('|');
+                        return { name: name.trim(), url: url.trim() };
+                    })
             };
 
-            // Save to localStorage
-            saveExamData(examData);
+            if (examIndex === undefined) {
+                // Adding new exam
+                examData.push(newExam);
+            } else {
+                // Editing existing exam
+                examData[examIndex] = newExam;
+            }
 
-            // Refresh the display
+            saveExamData(examData);
             loadExamData();
             closeEditModal();
         });
@@ -457,6 +465,24 @@
                     }
                 });
             }
+        }
+
+        // Add admin emails configuration
+        const adminEmails = [
+            "admin1@example.com",    // Replace with actual admin email addresses
+            "admin2@example.com"
+        ];
+
+        // Add admin functionality
+        function openAddExamModal() {
+            document.getElementById('subject').value = '';
+            document.getElementById('date').value = '';
+            document.getElementById('chapters').value = '';
+            document.getElementById('resources').value = '';
+            
+            const modal = document.getElementById('editModal');
+            modal.style.display = 'flex';
+            delete modal.dataset.examIndex; // New exam, not editing
         }
     </script>
 </body>

@@ -3,86 +3,119 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ExamManager - Login</title>
+    <title>ExamManager - Dashboard</title>
     <style>
         body {
             font-family: 'Segoe UI', Arial, sans-serif;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
             background-color: #f5f5f5;
         }
 
-        .login-container {
+        .navbar {
+            background-color: #2F2F2F;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .nav-link, .login-btn {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+        }
+
+        .login-btn {
+            border: 1px solid white;
+        }
+
+        .login-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .countdown-section {
             background-color: white;
             padding: 2rem;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             text-align: center;
-            max-width: 400px;
-            width: 90%;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 1.5rem;
-        }
-
-        .ms-login-btn {
-            background-color: #2F2F2F;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 4px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            font-size: 16px;
-            transition: background-color 0.2s;
-        }
-
-        .ms-login-btn:hover {
-            background-color: #404040;
-        }
-
-        .ms-icon {
-            width: 24px;
-            height: 24px;
-        }
-
-        .login-description {
-            color: #666;
             margin-bottom: 2rem;
-            font-size: 0.9rem;
+        }
+
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .exam-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .exam-card h3 {
+            margin-top: 0;
+            color: #333;
+        }
+
+        .resources-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resources-list a {
+            color: #0066cc;
+            text-decoration: none;
         }
     </style>
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
 </head>
 <body>
-    <div class="login-container">
+    <nav class="navbar">
         <h1>ExamManager</h1>
-        <p class="login-description">
-            Access your exam schedule, study materials, and more with your Microsoft account.
-        </p>
-        <button class="ms-login-btn">
-            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Microsoft_logo.svg/20px-Microsoft_logo.svg.png" 
-                 alt="Microsoft logo" 
-                 class="ms-icon">
-            Sign in with Microsoft
-        </button>
+        <div class="nav-links">
+            <a href="manage.html" class="nav-link">Manage Exams</a>
+            <a href="login.html" class="login-btn" id="loginBtn">Login</a>
+            <span id="userName" style="display: none;"></span>
+            <button onclick="logout()" class="login-btn" id="logoutBtn" style="display: none;">Logout</button>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <div class="countdown-section">
+            <h2>Next Exams</h2>
+            <div id="examCountdown">Loading...</div>
+        </div>
+
+        <div class="exam-grid" id="examGrid">
+            <!-- Exam cards will be loaded here -->
+        </div>
     </div>
+
     <script>
+        // MSAL config
         const msalConfig = {
             auth: {
-                clientId: "b0b2e0e0-0e0e-0e0e-0e0e-0e0e0e0e0e0e", // Replace with your actual client ID
-                authority: "https://login.microsoftonline.com/f9c1c9e0-0e0e-0e0e-0e0e-0e0e0e0e0e0e", // Replace with your tenant ID
-                redirectUri: window.location.origin,
+                clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
+                authority: "https://login.microsoftonline.com/0989912c-791b-4645-b147-b80ee1c93628",
+                redirectUri: "https://system-error-club.github.io/ExamManager/",
             },
             cache: {
                 cacheLocation: "sessionStorage",
@@ -92,34 +125,87 @@
 
         const msalInstance = new msal.PublicClientApplication(msalConfig);
 
-        // Handle the Microsoft login button click
-        document.querySelector('.ms-login-btn').addEventListener('click', async () => {
-            try {
-                const loginResponse = await msalInstance.loginPopup({
-                    scopes: ["User.Read"]
-                });
-                
-                if (loginResponse) {
-                    // Get user info
-                    const account = msalInstance.getActiveAccount();
-                    
-                    // Redirect to main application page after successful login
-                    window.location.href = '/dashboard.html';
-                }
-            } catch (error) {
-                console.error(error);
-                alert('Login failed. Please try again.');
+        // Check login status on load
+        window.addEventListener('load', async () => {
+            loadExamData(); // Load exams immediately
+            
+            const accounts = msalInstance.getAllAccounts();
+            if (accounts.length > 0) {
+                // User is logged in
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('userName').style.display = 'inline';
+                document.getElementById('logoutBtn').style.display = 'inline';
+                document.getElementById('userName').textContent = accounts[0].name;
             }
         });
 
-        // Check if user is already logged in
-        window.addEventListener('load', async () => {
-            const accounts = msalInstance.getAllAccounts();
-            if (accounts.length > 0) {
-                msalInstance.setActiveAccount(accounts[0]);
-                window.location.href = '/dashboard.html';
+        function logout() {
+            msalInstance.logoutPopup().then(() => {
+                document.getElementById('loginBtn').style.display = 'inline';
+                document.getElementById('userName').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'none';
+            });
+        }
+
+        // Load and display exam data
+        function loadExamData() {
+            const stored = localStorage.getItem('examData');
+            const examData = stored ? JSON.parse(stored) : defaultExamData;
+            
+            const examGrid = document.getElementById('examGrid');
+            examGrid.innerHTML = examData.map(exam => `
+                <div class="exam-card">
+                    <h3>${exam.subject}</h3>
+                    <p><strong>Date:</strong> ${exam.date}</p>
+                    <p><strong>Chapters:</strong> ${exam.chapters}</p>
+                    <h4>Resources:</h4>
+                    <ul class="resources-list">
+                        ${exam.resources.map(resource => `
+                            <li><a href="${resource.url}" target="_blank">${resource.name}</a></li>
+                        `).join('')}
+                    </ul>
+                </div>
+            `).join('');
+
+            updateCountdown(examData);
+        }
+
+        function updateCountdown(examData) {
+            if (!examData || examData.length === 0) {
+                document.getElementById('examCountdown').textContent = 'No upcoming exams';
+                return;
             }
-        });
+
+            const nextExam = new Date(examData[0].date);
+            const today = new Date();
+            const diffTime = Math.abs(nextExam - today);
+            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+            
+            document.getElementById('examCountdown').textContent = 
+                `${diffWeeks} weeks until ${examData[0].subject} exam`;
+        }
+
+        // Default exam data
+        const defaultExamData = [
+            {
+                subject: "Mathematics",
+                date: "2024-06-15",
+                chapters: "1-5",
+                resources: [
+                    { name: "Khan Academy - Calculus", url: "#" },
+                    { name: "Practice Problems PDF", url: "#" }
+                ]
+            },
+            {
+                subject: "Physics",
+                date: "2024-06-18",
+                chapters: "Mechanics, Thermodynamics",
+                resources: [
+                    { name: "Physics Lab Notes", url: "#" },
+                    { name: "Video Tutorials", url: "#" }
+                ]
+            }
+        ];
     </script>
 </body>
 </html> 
