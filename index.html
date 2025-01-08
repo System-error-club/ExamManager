@@ -88,24 +88,30 @@
                     loadExamData();
                 } else {
                     console.log("No logged in user found");
-                    window.location.href = 'login.html';
+                    // Only redirect if we're not already on the login page
+                    if (!window.location.pathname.includes('login.html')) {
+                        window.location.href = 'login.html';
+                    }
                 }
             } catch (error) {
                 console.error("Error checking auth state:", error);
-                window.location.href = 'login.html';
+                // Only redirect if we're not already on the login page
+                if (!window.location.pathname.includes('login.html')) {
+                    window.location.href = 'login.html';
+                }
             }
         });
 
         function logout() {
             console.log("Logging out...");
-            sessionStorage.clear();
             msalInstance.logoutPopup().then(() => {
                 sessionStorage.clear();
-                window.location.href = 'login.html';
+                // Use replace to prevent adding to browser history
+                window.location.replace('login.html');
             }).catch(error => {
                 console.error('Logout error:', error);
                 sessionStorage.clear();
-                window.location.href = 'login.html';
+                window.location.replace('login.html');
             });
         }
 

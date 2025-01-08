@@ -67,11 +67,19 @@
         window.addEventListener('load', async () => {
             console.log("Checking login status...");
             try {
+                // Handle redirect first
+                const response = await msalInstance.handleRedirectPromise();
+                if (response) {
+                    console.log("Login successful:", response);
+                    window.location.replace('index.html');
+                    return;
+                }
+
                 const accounts = msalInstance.getAllAccounts();
                 console.log("Found accounts:", accounts);
                 if (accounts.length > 0) {
                     console.log("User already logged in, redirecting to index.html");
-                    window.location.href = 'index.html';
+                    window.location.replace('index.html');
                 }
             } catch (error) {
                 console.error("Error checking login status:", error);
