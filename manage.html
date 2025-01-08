@@ -189,32 +189,30 @@
         // Load and display exams
         async function loadExams() {
             try {
+                const exams = await ExamAPI.getExams();
                 const weekFilter = document.getElementById('weekFilter').value;
-                const examList = document.getElementById('examList');
                 
-                ExamAPI.getExams().then(exams => {
-                    // Filter exams by week if needed
-                    const filteredExams = weekFilter === 'all' 
-                        ? exams 
-                        : exams.filter(exam => exam.ExamWeek.toString() === weekFilter);
+                const filteredExams = weekFilter === 'all' 
+                    ? exams 
+                    : exams.filter(exam => exam.ExamWeek.toString() === weekFilter);
 
-                    examList.innerHTML = filteredExams.map(exam => `
-                        <div class="exam-item">
-                            <h3>Week ${exam.ExamWeek} - ${exam.Subject}</h3>
-                            <p><strong>Date:</strong> ${new Date(exam.ExamDate).toLocaleDateString()}</p>
-                            <p><strong>Chapters:</strong> ${exam.Chapters}</p>
-                            <div class="resources-list">
-                                ${exam.resources.map(resource => `
-                                    <a href="${resource.url}" target="_blank">${resource.name}</a>
-                                `).join('<br>')}
-                            </div>
-                            <div class="action-buttons">
-                                <button class="btn btn-edit" onclick="editExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
-                                <button class="btn btn-delete" onclick="deleteExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
-                            </div>
+                const examList = document.getElementById('examList');
+                examList.innerHTML = filteredExams.map(exam => `
+                    <div class="exam-item">
+                        <h3>Week ${exam.ExamWeek} - ${exam.Subject}</h3>
+                        <p><strong>Date:</strong> ${new Date(exam.ExamDate).toLocaleDateString()}</p>
+                        <p><strong>Chapters:</strong> ${exam.Chapters}</p>
+                        <div class="resources-list">
+                            ${exam.resources.map(resource => `
+                                <a href="${resource.url}" target="_blank">${resource.name}</a>
+                            `).join('<br>')}
                         </div>
-                    `).join('');
-                });
+                        <div class="action-buttons">
+                            <button class="btn btn-edit" onclick="editExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
+                            <button class="btn btn-delete" onclick="deleteExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                        </div>
+                    </div>
+                `).join('');
             } catch (error) {
                 console.error('Error loading exams:', error);
                 alert('Failed to load exams. Please try again.');
@@ -266,50 +264,35 @@
             if (!isAdmin) return;
 
             try {
-                // Get form values first
-                const examWeek = parseInt(document.getElementById('examWeek').value);
-                const subject = document.getElementById('subject').value.trim();
-                const date = document.getElementById('date').value;
-                const chapters = document.getElementById('chapters').value.trim();
-
-                // Validate required fields
-                if (!examWeek || !subject || !date || !chapters) {
-                    alert('Please fill in all required fields');
-                    return;
-                }
-
-                const resources = document.getElementById('resources').value
-                    .split('\n')
-                    .filter(line => line.trim())
-                    .map(line => {
-                        const [name, url] = line.split('|').map(s => s.trim());
-                        return {
-                            name: name || 'Resource',
-                            url: url || '#'
-                        };
-                    });
-
-                const newExam = {
-                    examWeek,
-                    subject,
-                    date,
-                    chapters,
-                    resources: resources
+                const formData = {
+                    examWeek: parseInt(document.getElementById('examWeek').value),
+                    subject: document.getElementById('subject').value.trim(),
+                    date: document.getElementById('date').value,
+                    chapters: document.getElementById('chapters').value.trim(),
+                    resources: document.getElementById('resources').value
+                        .split('\n')
+                        .filter(line => line.trim())
+                        .map(line => {
+                            const [name, url] = line.split('|').map(s => s.trim());
+                            return {
+                                name: name || 'Resource',
+                                url: url || '#'
+                            };
+                        })
                 };
 
-                console.log('Submitting exam:', newExam);  // Debug log
+                console.log('Submitting exam:', formData);
 
                 const examId = document.getElementById('examModal').dataset.examId;
-
-                if (!examId) {
-                    await ExamAPI.saveExam(newExam);
+                
+                if (examId) {
+                    await ExamAPI.updateExam(examId, formData);
                 } else {
-                    await ExamAPI.updateExam(examId, newExam);
+                    await ExamAPI.saveExam(formData);
                 }
 
                 closeModal();
-                await loadExams();  // Wait for loadExams to complete
-                window.location.reload();  // Refresh the page to ensure everything is synced
+                await loadExams();
             } catch (error) {
                 console.error('Error saving exam:', error);
                 alert('Error saving exam. Please try again.');

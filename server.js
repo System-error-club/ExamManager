@@ -122,18 +122,11 @@ app.post('/api/exams', async (req, res) => {
         const exam = req.body;
         console.log('Received exam data:', exam);
 
-        // Validate required fields
-        if (!exam.examWeek || !exam.subject || !exam.date || !exam.chapters) {
-            return res.status(400).json({ 
-                error: 'Missing required fields',
-                received: exam 
-            });
-        }
-
-        const transaction = new sql.Transaction();
+        const transaction = new sql.Transaction(await sql.connect(config));
         await transaction.begin();
 
         try {
+            // Convert field names to match database
             const examResult = await transaction.request()
                 .input('examWeek', sql.Int, exam.examWeek)
                 .input('subject', sql.NVarChar, exam.subject)
@@ -141,34 +134,41 @@ app.post('/api/exams', async (req, res) => {
                 .input('chapters', sql.NVarChar, exam.chapters)
                 .query(`
                     INSERT INTO Exams (ExamWeek, Subject, ExamDate, Chapters)
-                    OUTPUT INSERTED.*
+                    OUTPUT 
+                        INSERTED.Id,
+                        INSERTED.ExamWeek,
+                        INSERTED.Subject,
+                        INSERTED.ExamDate,
+                        INSERTED.Chapters
                     VALUES (@examWeek, @subject, @date, @chapters)
                 `);
 
-            const examId = examResult.recordset[0].Id;
-            const newExam = examResult.recordset[0];
+            const newExam = {
+                Id: examResult.recordset[0].Id,
+                ExamWeek: examResult.recordset[0].ExamWeek,
+                Subject: examResult.recordset[0].Subject,
+                ExamDate: examResult.recordset[0].ExamDate,
+                Chapters: examResult.recordset[0].Chapters,
+                resources: []
+            };
 
-            // Handle empty resources array
-            const resources = exam.resources || [];
-            for (const resource of resources) {
-                await transaction.request()
-                    .input('examId', sql.Int, examId)
-                    .input('name', sql.NVarChar, resource.name)
-                    .input('url', sql.NVarChar, resource.url)
-                    .query(`
-                        INSERT INTO Resources (ExamId, Name, Url)
-                        VALUES (@examId, @name, @url)
-                    `);
+            // Handle resources
+            if (exam.resources && exam.resources.length > 0) {
+                for (const resource of exam.resources) {
+                    await transaction.request()
+                        .input('examId', sql.Int, newExam.Id)
+                        .input('name', sql.NVarChar, resource.name)
+                        .input('url', sql.NVarChar, resource.url)
+                        .query(`
+                            INSERT INTO Resources (ExamId, Name, Url)
+                            VALUES (@examId, @name, @url)
+                        `);
+                    newExam.resources.push(resource);
+                }
             }
 
             await transaction.commit();
-            res.json({ 
-                id: examId,
-                exam: {
-                    ...newExam,
-                    resources: resources
-                }
-            });
+            res.json(newExam);
         } catch (error) {
             await transaction.rollback();
             throw error;

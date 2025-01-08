@@ -104,25 +104,26 @@
 
         // Load and display exam data
         function loadExamData() {
-            const stored = localStorage.getItem('examData');
-            const examData = stored ? JSON.parse(stored) : defaultExamData;
-            
-            const examGrid = document.getElementById('examGrid');
-            examGrid.innerHTML = examData.map(exam => `
-                <div class="exam-card">
-                    <h3>Week ${exam.examWeek} - ${exam.subject}</h3>
-                    <p><strong>Date:</strong> ${exam.date}</p>
-                    <p><strong>Chapters:</strong> ${exam.chapters}</p>
-                    <h4>Resources:</h4>
-                    <ul class="resources-list">
-                        ${exam.resources.map(resource => `
-                            <li><a href="${resource.url}" target="_blank">${resource.name}</a></li>
-                        `).join('')}
-                    </ul>
-                </div>
-            `).join('');
+            ExamAPI.getExams().then(exams => {
+                const examGrid = document.getElementById('examGrid');
+                examGrid.innerHTML = exams.map(exam => `
+                    <div class="exam-card">
+                        <h3>Week ${exam.ExamWeek} - ${exam.Subject}</h3>
+                        <p><strong>Date:</strong> ${new Date(exam.ExamDate).toLocaleDateString()}</p>
+                        <p><strong>Chapters:</strong> ${exam.Chapters}</p>
+                        <h4>Resources:</h4>
+                        <ul class="resources-list">
+                            ${exam.resources.map(resource => `
+                                <li><a href="${resource.url}" target="_blank">${resource.name}</a></li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `).join('');
 
-            updateCountdown(examData);
+                updateCountdown(exams);
+            }).catch(error => {
+                console.error('Error loading exam data:', error);
+            });
         }
 
         function updateCountdown(examData) {
