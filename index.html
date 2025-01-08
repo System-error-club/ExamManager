@@ -6,6 +6,7 @@
     <title>ExamManager - Dashboard</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <script src="api.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -53,13 +54,15 @@
         // Check login status on load
         window.addEventListener('load', async () => {
             console.log("Checking authentication state...");
-            // Handle redirect first
-            const response = await msalInstance.handleRedirectPromise();
-            if (response) {
-                console.log("Redirect response:", response);
-            }
-            
             try {
+                // Handle redirect first
+                const response = await msalInstance.handleRedirectPromise();
+                if (response) {
+                    console.log("Redirect response:", response);
+                    loadExamData();
+                    return;
+                }
+
                 const accounts = msalInstance.getAllAccounts();
                 console.log("Found accounts:", accounts);
                 
@@ -85,13 +88,6 @@
                     loadExamData();
                 } else {
                     console.log("No logged in user found");
-                    // User is not logged in
-                    document.getElementById('loginBtn').style.display = 'inline';
-                    document.getElementById('userName').style.display = 'none';
-                    document.getElementById('logoutBtn').style.display = 'none';
-                    document.getElementById('manageLink').style.display = 'none';
-                    
-                    // Redirect to login page if not logged in
                     window.location.href = 'login.html';
                 }
             } catch (error) {
@@ -104,9 +100,11 @@
             console.log("Logging out...");
             sessionStorage.clear();
             msalInstance.logoutPopup().then(() => {
+                sessionStorage.clear();
                 window.location.href = 'login.html';
             }).catch(error => {
                 console.error('Logout error:', error);
+                sessionStorage.clear();
                 window.location.href = 'login.html';
             });
         }
