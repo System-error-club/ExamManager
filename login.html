@@ -26,7 +26,7 @@
         const msalConfig = {
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
-                authority: "https://login.microsoftonline.com/keizerkarelcollege.nl",
+                authority: "https://login.microsoftonline.com/common",
                 redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
                 validateAuthority: true,
                 navigateToLoginRequestUrl: true
@@ -49,7 +49,7 @@
 
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "login"
+                    prompt: "select_account"
                 };
 
                 const response = await msalInstance.loginPopup(loginRequest);
