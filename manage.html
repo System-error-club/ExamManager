@@ -6,6 +6,7 @@
     <title>ExamManager - Manage Exams</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <script src="api.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -186,36 +187,40 @@
         }
 
         // Load and display exams
-        function loadExams() {
-            const stored = localStorage.getItem('examData');
-            const examData = stored ? JSON.parse(stored) : [];
-            const weekFilter = document.getElementById('weekFilter').value;
-            
-            // Sort exams by week and date
-            const sortedExams = [...examData].sort((a, b) => {
-                if (a.examWeek !== b.examWeek) {
-                    return a.examWeek - b.examWeek;
-                }
-                return new Date(a.date) - new Date(b.date);
-            });
+        async function loadExams() {
+            try {
+                const examData = await ExamAPI.getExams();
+                const weekFilter = document.getElementById('weekFilter').value;
+                
+                // Sort exams by week and date
+                const sortedExams = [...examData].sort((a, b) => {
+                    if (a.examWeek !== b.examWeek) {
+                        return a.examWeek - b.examWeek;
+                    }
+                    return new Date(a.date) - new Date(b.date);
+                });
 
-            // Filter by week if selected
-            const filteredExams = weekFilter === 'all' 
-                ? sortedExams 
-                : sortedExams.filter(exam => exam.examWeek.toString() === weekFilter);
-            
-            const examList = document.getElementById('examList');
-            examList.innerHTML = filteredExams.map((exam, index) => `
-                <div class="exam-item">
-                    <h3>Week ${exam.examWeek} - ${exam.subject}</h3>
-                    <p><strong>Date:</strong> ${exam.date}</p>
-                    <p><strong>Chapters:</strong> ${exam.chapters}</p>
-                    <div class="action-buttons">
-                        <button class="btn btn-edit" onclick="editExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
-                        <button class="btn btn-delete" onclick="deleteExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                // Filter by week if selected
+                const filteredExams = weekFilter === 'all' 
+                    ? sortedExams 
+                    : sortedExams.filter(exam => exam.examWeek.toString() === weekFilter);
+                
+                const examList = document.getElementById('examList');
+                examList.innerHTML = filteredExams.map((exam, index) => `
+                    <div class="exam-item">
+                        <h3>Week ${exam.examWeek} - ${exam.subject}</h3>
+                        <p><strong>Date:</strong> ${exam.date}</p>
+                        <p><strong>Chapters:</strong> ${exam.chapters}</p>
+                        <div class="action-buttons">
+                            <button class="btn btn-edit" onclick="editExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
+                            <button class="btn btn-delete" onclick="deleteExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                        </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('');
+            } catch (error) {
+                console.error('Error loading exams:', error);
+                alert('Failed to load exams. Please try again.');
+            }
         }
 
         // Modal handling
@@ -263,7 +268,6 @@
             if (!isAdmin) return;
 
             try {
-                const examData = JSON.parse(localStorage.getItem('examData') || '[]');
                 const examIndex = document.getElementById('examModal').dataset.examIndex;
                 
                 // Simplified resource processing
@@ -290,14 +294,13 @@
                 };
 
                 if (examIndex === undefined) {
-                    examData.push(newExam);
+                    await ExamAPI.saveExam(newExam);
                 } else {
-                    examData[parseInt(examIndex)] = newExam;
+                    await ExamAPI.updateExam(examIndex, newExam);
                 }
 
-                localStorage.setItem('examData', JSON.stringify(examData));
                 closeModal();
-                window.location.reload();
+                loadExams();
             } catch (error) {
                 console.error('Error saving exam:', error);
                 alert('Error saving exam. Please try again.');
@@ -309,17 +312,13 @@
             openModal(index);
         }
 
-        function deleteExam(index) {
+        async function deleteExam(examId) {
             if (!isAdmin) return;
             if (!confirm('Are you sure you want to delete this exam?')) return;
 
             try {
-                const examData = JSON.parse(localStorage.getItem('examData') || '[]');
-                examData.splice(index, 1);
-                localStorage.setItem('examData', JSON.stringify(examData));
-                setTimeout(() => {
-                    loadExams();
-                }, 100);
+                await ExamAPI.deleteExam(examId);
+                loadExams();
             } catch (error) {
                 console.error('Error deleting exam:', error);
                 alert('Error deleting exam. Please try again.');
@@ -334,61 +333,53 @@
         }
 
         // Admin management functions
-        function loadAdminList() {
-            const storedAdmins = localStorage.getItem('adminEmails');
-            const adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
-                "kangym727@gmail.com",
-                "8250@leerling.keizerkarelcollege.nl"
-            ];
+        async function loadAdminList() {
+            try {
+                const adminEmails = await ExamAPI.getAdmins();
 
-            const adminList = document.getElementById('adminList');
-            adminList.innerHTML = adminEmails.map(email => `
-                <div class="admin-item">
-                    <span>${email}</span>
-                    ${email !== "kangym727@gmail.com" ? 
-                        `<button class="btn btn-delete" onclick="removeAdmin('${email}')">Remove</button>` : 
-                        '<span>(Primary Admin)</span>'
-                    }
-                </div>
-            `).join('');
+                const adminList = document.getElementById('adminList');
+                adminList.innerHTML = adminEmails.map(email => `
+                    <div class="admin-item">
+                        <span>${email}</span>
+                        ${email !== "kangym727@gmail.com" ? 
+                            `<button class="btn btn-delete" onclick="removeAdmin('${email}')">Remove</button>` : 
+                            '<span>(Primary Admin)</span>'
+                        }
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading admins:', error);
+                alert('Failed to load admin list. Please try again.');
+            }
         }
 
-        function addNewAdmin() {
+        async function addNewAdmin() {
             const newEmail = document.getElementById('newAdminEmail').value.trim().toLowerCase();
             if (!newEmail) {
                 alert('Please enter an email address');
                 return;
             }
 
-            const storedAdmins = localStorage.getItem('adminEmails');
-            const adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
-                "kangym727@gmail.com",
-                "8250@leerling.keizerkarelcollege.nl"
-            ];
-
-            if (adminEmails.includes(newEmail)) {
-                alert('This email is already an admin');
-                return;
+            try {
+                await ExamAPI.addAdmin(newEmail);
+                document.getElementById('newAdminEmail').value = '';
+                loadAdminList();
+            } catch (error) {
+                console.error('Error adding admin:', error);
+                alert('Failed to add admin. Please try again.');
             }
-
-            adminEmails.push(newEmail);
-            localStorage.setItem('adminEmails', JSON.stringify(adminEmails));
-            document.getElementById('newAdminEmail').value = '';
-            loadAdminList();
         }
 
-        function removeAdmin(email) {
+        async function removeAdmin(email) {
             if (!confirm(`Are you sure you want to remove ${email} as an admin?`)) return;
 
-            const storedAdmins = localStorage.getItem('adminEmails');
-            let adminEmails = storedAdmins ? JSON.parse(storedAdmins) : [
-                "kangym727@gmail.com",
-                "8250@leerling.keizerkarelcollege.nl"
-            ];
-
-            adminEmails = adminEmails.filter(e => e !== email);
-            localStorage.setItem('adminEmails', JSON.stringify(adminEmails));
-            loadAdminList();
+            try {
+                await ExamAPI.removeAdmin(email);
+                loadAdminList();
+            } catch (error) {
+                console.error('Error removing admin:', error);
+                alert('Failed to remove admin. Please try again.');
+            }
         }
     </script>
 </body>
