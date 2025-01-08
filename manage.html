@@ -268,20 +268,14 @@
             if (!isAdmin) return;
 
             try {
-                const examIndex = document.getElementById('examModal').dataset.examIndex;
-                
-                // Simplified resource processing
                 const resources = document.getElementById('resources').value
                     .split('\n')
-                    .filter(line => line.trim()) // Remove empty lines
+                    .filter(line => line.trim())
                     .map(line => {
-                        if (!line.includes('|')) {
-                            return { name: line.trim(), url: '#' };
-                        }
-                        const [name, ...urlParts] = line.split('|');
+                        const [name, url] = line.split('|').map(s => s.trim());
                         return {
-                            name: name.trim() || 'Resource',
-                            url: urlParts.join('|').trim() || '#'
+                            name: name || 'Resource',
+                            url: url || '#'
                         };
                     });
 
@@ -292,6 +286,8 @@
                     chapters: document.getElementById('chapters').value,
                     resources: resources
                 };
+
+                const examIndex = document.getElementById('examModal').dataset.examIndex;
 
                 if (examIndex === undefined) {
                     await ExamAPI.saveExam(newExam);
