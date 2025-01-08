@@ -6,6 +6,7 @@
     <title>ExamManager - Login</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6490797898072451" crossorigin="anonymous"></script>
 </head>
 <body>
     <div class="login-container">
@@ -49,13 +50,19 @@
 
                 const loginRequest = {
                     scopes: ["User.Read"],
-                    prompt: "select_account"
+                    prompt: "select_account",
+                    redirectUri: window.location.origin + "/ExamManager/index.html"
                 };
 
-                const response = await msalInstance.loginPopup(loginRequest);
-                if (response) {
-                    console.log("Login successful:", response);
-                    window.location.href = 'index.html';
+                // Use redirect for mobile, popup for desktop
+                if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    await msalInstance.loginRedirect(loginRequest);
+                } else {
+                    const response = await msalInstance.loginPopup(loginRequest);
+                    if (response) {
+                        console.log("Login successful:", response);
+                        window.location.replace('index.html');
+                    }
                 }
             } catch (error) {
                 console.error("Login failed:", error.message);
