@@ -99,6 +99,4 @@ class ExamAPI {
             throw error;
         }
     }
-}
-
-module.exports = ExamAPI; 
+} 
