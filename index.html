@@ -54,12 +54,14 @@
         // Check login status on load
         window.addEventListener('load', async () => {
             console.log("Checking authentication state...");
+            // Load exams immediately for all users
+            loadExamData();
+
             try {
                 // Handle redirect first
                 const response = await msalInstance.handleRedirectPromise();
                 if (response) {
                     console.log("Redirect response:", response);
-                    loadExamData();
                     return;
                 }
 
@@ -83,22 +85,21 @@
                     document.getElementById('logoutBtn').style.display = 'inline';
                     document.getElementById('userName').textContent = account.name;
                     document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
-                    
-                    // Load exams after successful login
-                    loadExamData();
                 } else {
                     console.log("No logged in user found");
-                    // Only redirect if we're not already on the login page
-                    if (!window.location.pathname.includes('login.html')) {
-                        window.location.href = 'login.html';
-                    }
+                    // Show login button for non-logged in users
+                    document.getElementById('loginBtn').style.display = 'inline';
+                    document.getElementById('userName').style.display = 'none';
+                    document.getElementById('logoutBtn').style.display = 'none';
+                    document.getElementById('manageLink').style.display = 'none';
                 }
             } catch (error) {
                 console.error("Error checking auth state:", error);
-                // Only redirect if we're not already on the login page
-                if (!window.location.pathname.includes('login.html')) {
-                    window.location.href = 'login.html';
-                }
+                // Show login button if auth check fails
+                document.getElementById('loginBtn').style.display = 'inline';
+                document.getElementById('userName').style.display = 'none';
+                document.getElementById('logoutBtn').style.display = 'none';
+                document.getElementById('manageLink').style.display = 'none';
             }
         });
 
