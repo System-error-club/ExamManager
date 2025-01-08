@@ -53,7 +53,11 @@
         // Check login status on load
         window.addEventListener('load', async () => {
             console.log("Checking authentication state...");
-            loadExamData(); // Load exams immediately
+            // Handle redirect first
+            const response = await msalInstance.handleRedirectPromise();
+            if (response) {
+                console.log("Redirect response:", response);
+            }
             
             try {
                 const accounts = msalInstance.getAllAccounts();
@@ -76,6 +80,9 @@
                     document.getElementById('logoutBtn').style.display = 'inline';
                     document.getElementById('userName').textContent = account.name;
                     document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
+                    
+                    // Load exams after successful login
+                    loadExamData();
                 } else {
                     console.log("No logged in user found");
                     // User is not logged in
@@ -83,23 +90,25 @@
                     document.getElementById('userName').style.display = 'none';
                     document.getElementById('logoutBtn').style.display = 'none';
                     document.getElementById('manageLink').style.display = 'none';
+                    
+                    // Redirect to login page if not logged in
+                    window.location.href = 'login.html';
                 }
             } catch (error) {
                 console.error("Error checking auth state:", error);
+                window.location.href = 'login.html';
             }
         });
 
         function logout() {
             console.log("Logging out...");
-            // Clear session storage
             sessionStorage.clear();
-            // Reset UI elements
-            document.getElementById('loginBtn').style.display = 'inline';
-            document.getElementById('userName').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = 'none';
-            document.getElementById('manageLink').style.display = 'none';
-            // Reload the page
-            window.location.reload();
+            msalInstance.logoutPopup().then(() => {
+                window.location.href = 'login.html';
+            }).catch(error => {
+                console.error('Logout error:', error);
+                window.location.href = 'login.html';
+            });
         }
 
         // Load and display exam data
