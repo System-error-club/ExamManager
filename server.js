@@ -120,7 +120,15 @@ app.post('/api/exams', async (req, res) => {
     try {
         await sql.connect(config);
         const exam = req.body;
-        console.log('Received exam data:', exam); // Debug log
+        console.log('Received exam data:', exam);
+
+        // Validate required fields
+        if (!exam.examWeek || !exam.subject || !exam.date || !exam.chapters) {
+            return res.status(400).json({ 
+                error: 'Missing required fields',
+                received: exam 
+            });
+        }
 
         const transaction = new sql.Transaction();
         await transaction.begin();

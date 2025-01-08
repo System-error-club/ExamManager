@@ -189,34 +189,32 @@
         // Load and display exams
         async function loadExams() {
             try {
-                const examData = await ExamAPI.getExams();
                 const weekFilter = document.getElementById('weekFilter').value;
-                
-                // Sort exams by week and date
-                const sortedExams = [...examData].sort((a, b) => {
-                    if (a.examWeek !== b.examWeek) {
-                        return a.examWeek - b.examWeek;
-                    }
-                    return new Date(a.date) - new Date(b.date);
-                });
-
-                // Filter by week if selected
-                const filteredExams = weekFilter === 'all' 
-                    ? sortedExams 
-                    : sortedExams.filter(exam => exam.examWeek.toString() === weekFilter);
-                
                 const examList = document.getElementById('examList');
-                examList.innerHTML = filteredExams.map((exam, index) => `
-                    <div class="exam-item">
-                        <h3>Week ${exam.examWeek} - ${exam.subject}</h3>
-                        <p><strong>Date:</strong> ${exam.date}</p>
-                        <p><strong>Chapters:</strong> ${exam.chapters}</p>
-                        <div class="action-buttons">
-                            <button class="btn btn-edit" onclick="editExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
-                            <button class="btn btn-delete" onclick="deleteExam(${examData.indexOf(exam)})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                
+                ExamAPI.getExams().then(exams => {
+                    // Filter exams by week if needed
+                    const filteredExams = weekFilter === 'all' 
+                        ? exams 
+                        : exams.filter(exam => exam.ExamWeek.toString() === weekFilter);
+
+                    examList.innerHTML = filteredExams.map(exam => `
+                        <div class="exam-item">
+                            <h3>Week ${exam.ExamWeek} - ${exam.Subject}</h3>
+                            <p><strong>Date:</strong> ${new Date(exam.ExamDate).toLocaleDateString()}</p>
+                            <p><strong>Chapters:</strong> ${exam.Chapters}</p>
+                            <div class="resources-list">
+                                ${exam.resources.map(resource => `
+                                    <a href="${resource.url}" target="_blank">${resource.name}</a>
+                                `).join('<br>')}
+                            </div>
+                            <div class="action-buttons">
+                                <button class="btn btn-edit" onclick="editExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Edit</button>
+                                <button class="btn btn-delete" onclick="deleteExam(${exam.Id})" ${!isAdmin ? 'disabled' : ''}>Delete</button>
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                });
             } catch (error) {
                 console.error('Error loading exams:', error);
                 alert('Failed to load exams. Please try again.');
@@ -224,33 +222,33 @@
         }
 
         // Modal handling
-        function openModal(examIndex = null) {
+        function openModal(examId = null) {
             const modal = document.getElementById('examModal');
             const modalTitle = document.getElementById('modalTitle');
             
-            if (examIndex !== null) {
-                const examData = JSON.parse(localStorage.getItem('examData'));
-                const exam = examData[examIndex];
-                
-                document.getElementById('examWeek').value = exam.examWeek;
-                document.getElementById('subject').value = exam.subject;
-                document.getElementById('date').value = exam.date;
-                document.getElementById('chapters').value = exam.chapters;
-                document.getElementById('resources').value = exam.resources
-                    .map(r => {
-                        if (r.url === '#') {
-                            return r.name;
-                        }
-                        return `${r.name}|${r.url}`;
-                    })
-                    .join('\n');
-                
-                modalTitle.textContent = 'Edit Exam';
-                modal.dataset.examIndex = examIndex;
+            if (examId !== null) {
+                ExamAPI.getExams().then(exams => {
+                    const exam = exams.find(e => e.Id === examId);
+                    if (!exam) {
+                        console.error('Exam not found:', examId);
+                        return;
+                    }
+                    
+                    document.getElementById('examWeek').value = exam.ExamWeek;
+                    document.getElementById('subject').value = exam.Subject;
+                    document.getElementById('date').value = exam.ExamDate.split('T')[0];
+                    document.getElementById('chapters').value = exam.Chapters;
+                    document.getElementById('resources').value = exam.resources
+                        .map(r => `${r.name}|${r.url}`)
+                        .join('\n');
+                    
+                    modalTitle.textContent = 'Edit Exam';
+                    modal.dataset.examId = examId;
+                });
             } else {
                 document.getElementById('examForm').reset();
                 modalTitle.textContent = 'Add Exam';
-                delete modal.dataset.examIndex;
+                delete modal.dataset.examId;
             }
             
             modal.style.display = 'flex';
@@ -268,6 +266,18 @@
             if (!isAdmin) return;
 
             try {
+                // Get form values first
+                const examWeek = parseInt(document.getElementById('examWeek').value);
+                const subject = document.getElementById('subject').value.trim();
+                const date = document.getElementById('date').value;
+                const chapters = document.getElementById('chapters').value.trim();
+
+                // Validate required fields
+                if (!examWeek || !subject || !date || !chapters) {
+                    alert('Please fill in all required fields');
+                    return;
+                }
+
                 const resources = document.getElementById('resources').value
                     .split('\n')
                     .filter(line => line.trim())
@@ -280,23 +290,26 @@
                     });
 
                 const newExam = {
-                    examWeek: parseInt(document.getElementById('examWeek').value),
-                    subject: document.getElementById('subject').value,
-                    date: document.getElementById('date').value,
-                    chapters: document.getElementById('chapters').value,
+                    examWeek,
+                    subject,
+                    date,
+                    chapters,
                     resources: resources
                 };
 
-                const examIndex = document.getElementById('examModal').dataset.examIndex;
+                console.log('Submitting exam:', newExam);  // Debug log
 
-                if (examIndex === undefined) {
+                const examId = document.getElementById('examModal').dataset.examId;
+
+                if (!examId) {
                     await ExamAPI.saveExam(newExam);
                 } else {
-                    await ExamAPI.updateExam(examIndex, newExam);
+                    await ExamAPI.updateExam(examId, newExam);
                 }
 
                 closeModal();
-                loadExams();
+                await loadExams();  // Wait for loadExams to complete
+                window.location.reload();  // Refresh the page to ensure everything is synced
             } catch (error) {
                 console.error('Error saving exam:', error);
                 alert('Error saving exam. Please try again.');
@@ -314,7 +327,7 @@
 
             try {
                 await ExamAPI.deleteExam(examId);
-                loadExams();
+                await loadExams();
             } catch (error) {
                 console.error('Error deleting exam:', error);
                 alert('Error deleting exam. Please try again.');
