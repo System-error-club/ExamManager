@@ -73,18 +73,21 @@
                     const account = accounts[0];
                     console.log("Logged in user:", account);
                     const userEmail = account.username.toLowerCase();
-                    const adminEmails = [
-                        "kangym727@gmail.com",
-                        "8250@leerling.keizerkarelcollege.nl"
-                    ].map(email => email.toLowerCase());
-                    const isAdmin = adminEmails.includes(userEmail);
-                    console.log("Is admin:", isAdmin);
-                    
-                    document.getElementById('loginBtn').style.display = 'none';
-                    document.getElementById('userName').style.display = 'inline';
-                    document.getElementById('logoutBtn').style.display = 'inline';
-                    document.getElementById('userName').textContent = account.name;
-                    document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
+                    // Check admin status from database
+                    try {
+                        const adminEmails = await ExamAPI.getAdmins();
+                        const isAdmin = adminEmails.map(email => email.toLowerCase()).includes(userEmail);
+                        console.log("Admin status:", isAdmin);
+                        
+                        document.getElementById('loginBtn').style.display = 'none';
+                        document.getElementById('userName').style.display = 'inline';
+                        document.getElementById('logoutBtn').style.display = 'inline';
+                        document.getElementById('userName').textContent = account.name;
+                        document.getElementById('manageLink').style.display = isAdmin ? 'inline' : 'none';
+                    } catch (error) {
+                        console.error("Error checking admin status:", error);
+                        document.getElementById('manageLink').style.display = 'none';
+                    }
                 } else {
                     console.log("No logged in user found");
                     // Show login button for non-logged in users

@@ -147,7 +147,14 @@
 
                 const userEmail = account.username.toLowerCase();
                 console.log("User email:", userEmail);
-                isAdmin = adminEmails.some(email => email.toLowerCase() === userEmail);
+                // Check admin status from database
+                try {
+                    const adminEmails = await ExamAPI.getAdmins();
+                    isAdmin = adminEmails.map(email => email.toLowerCase()).includes(userEmail);
+                } catch (error) {
+                    console.error("Error checking admin status:", error);
+                    isAdmin = false;
+                }
                 console.log("Admin status:", isAdmin);
                 updateUIForAuth();
                 
@@ -367,6 +374,12 @@
 
             try {
                 await ExamAPI.removeAdmin(email);
+                // If removing current user's admin access, redirect to index
+                const currentUser = msalInstance.getActiveAccount();
+                if (currentUser && currentUser.username.toLowerCase() === email.toLowerCase()) {
+                    window.location.href = 'index.html';
+                    return;
+                }
                 loadAdminList();
             } catch (error) {
                 console.error('Error removing admin:', error);
