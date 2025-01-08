@@ -132,7 +132,7 @@
                 return;
             }
 
-            const nextExam = new Date(examData[0].date);
+            const nextExam = new Date(examData[0].ExamDate);
             const today = new Date();
             const diffTime = Math.abs(nextExam - today);
             // Calculate differences in various units
@@ -150,32 +150,8 @@
             }
             
             document.getElementById('examCountdown').textContent = 
-                `${timeMessage} until ${examData[0].subject} exam`;
+                `${timeMessage} until ${examData[0].Subject} exam`;
         }
-
-        // Default exam data
-        const defaultExamData = [
-            {
-                examWeek: 1,
-                subject: "W",
-                date: "2024-06-15",
-                chapters: "1234124",
-                resources: [
-                    { name: "Test", url: "#" },
-                    { name: "Test", url: "#" }
-                ]
-            },
-            {
-                examWeek: 1,
-                subject: "NA",
-                date: "2024-06-18",
-                chapters: "531",
-                resources: [
-                    { name: "test2", url: "#" },
-                    { name: "test2", url: "#" }
-                ]
-            }
-        ];
     </script>
 </body>
 </html> 
