@@ -28,7 +28,9 @@
             auth: {
                 clientId: "10123410-1cb3-42c6-b3a5-a62c43d8cb01",
                 authority: "https://login.microsoftonline.com/common",
-                redirectUri: "https://system-error-club.github.io/ExamManager/index.html",
+                redirectUri: window.location.href.includes('system-error-club.github.io')
+                    ? "https://system-error-club.github.io/ExamManager/index.html"
+                    : "https://kkc.kevink.tech/index.html",
                 validateAuthority: false,
                 navigateToLoginRequestUrl: true
             },
@@ -51,17 +53,21 @@
                 const loginRequest = {
                     scopes: ["User.Read"],
                     prompt: "select_account",
-                    redirectUri: window.location.origin + "/ExamManager/index.html"
+                    redirectUri: window.location.href.includes('system-error-club.github.io')
+                        ? "https://system-error-club.github.io/ExamManager/index.html"
+                        : "https://kkc.kevink.tech/index.html"
                 };
 
                 // Use redirect for mobile, popup for desktop
                 if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+                    console.log("Mobile device detected, using redirect login");
                     await msalInstance.loginRedirect(loginRequest);
                 } else {
+                    console.log("Desktop device detected, using popup login");
                     const response = await msalInstance.loginPopup(loginRequest);
                     if (response) {
                         console.log("Login successful:", response);
-                        window.location.replace('index.html');
+                        window.location.replace(loginRequest.redirectUri);
                     }
                 }
             } catch (error) {
@@ -78,7 +84,7 @@
                 const response = await msalInstance.handleRedirectPromise();
                 if (response) {
                     console.log("Login successful:", response);
-                    window.location.replace('index.html');
+                    window.location.replace(msalConfig.auth.redirectUri);
                     return;
                 }
 
@@ -86,7 +92,7 @@
                 console.log("Found accounts:", accounts);
                 if (accounts.length > 0) {
                     console.log("User already logged in, redirecting to index.html");
-                    window.location.replace('index.html');
+                    window.location.replace(msalConfig.auth.redirectUri);
                 }
             } catch (error) {
                 console.error("Error checking login status:", error);
