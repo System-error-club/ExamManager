@@ -1,116 +1,64 @@
 const express = require('express');
 const cors = require('cors');
-const sql = require('mssql');
+const db = require('./db');
+const path = require('path');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 const app = express();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
+// Serve static files
+app.use(express.static(path.join(__dirname, 'src/public'), { index: false }));
+app.use('/css', express.static(path.join(__dirname, 'src/public/css')));
+app.use('/js', express.static(path.join(__dirname, 'src/public/js')));
 
 // CORS configuration
 app.use(cors({
     origin: [
         'https://system-error-club.github.io',
         'https://kkc.kevink.tech',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: false,
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    credentials: true,
+    allowedHeaders: ['Content-Type'],
     maxAge: 600
 }));
 
 app.use(express.json());
 
-// Database configuration
-const config = {
-    server: process.env.SQL_SERVER,
-    database: process.env.SQL_DATABASE,
-    authentication: {
-        type: 'default',
-        options: {
-            userName: process.env.SQL_USER,
-            password: process.env.SQL_PASSWORD
-        }
-    },
-    options: {
-        encrypt: true
-    }
-};
+// ===============================
+// Exam Endpoints
+// ===============================
 
-// Basic test endpoint
+// Serve dashboard
 app.get('/', (req, res) => {
-    res.json({ message: 'Server is running' });
-});
-
-// Test database connection
-app.get('/api/test', async (req, res) => {
-    try {
-        await sql.connect(config);
-        const result = await sql.query('SELECT 1 as test');
-        res.json({ 
-            status: 'success',
-            dbConnected: true,
-            env: {
-                server: process.env.SQL_SERVER,
-                database: process.env.SQL_DATABASE
-            }
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            status: 'error',
-            message: error.message,
-            dbConnected: false
-        });
-    }
+    res.sendFile(path.join(__dirname, 'src/public/dashboard.html'));
 });
 
 // Get all exams
 app.get('/api/exams', async (req, res) => {
     try {
-        await sql.connect(config);
-        // First get all exams
-        const exams = await sql.query(`
-            SELECT * FROM Exams
-            ORDER BY ExamDate
-        `);
-
-        // Then get all resources
-        const resources = await sql.query(`
-            SELECT * FROM Resources
-        `);
-
-        // Group resources by exam
-        const examMap = new Map();
-        exams.recordset.forEach(exam => {
-            examMap.set(exam.Id, {
-                ...exam,
-                resources: []
-            });
-        });
-
-        // Add resources to their exams
-        resources.recordset.forEach(resource => {
-            const exam = examMap.get(resource.ExamId);
-            if (exam) {
-                exam.resources.push({
-                    name: resource.Name,
-                    url: resource.Url
-                });
-            }
-        });
-
-        res.json(Array.from(examMap.values()));
+        const result = await db.query('SELECT * FROM exams ORDER BY exam_date');
+        res.json(result);
     } catch (error) {
         console.error('Error fetching exams:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get all admins
-app.get('/api/admins', async (req, res) => {
+// Get exam by id
+app.get('/api/exams/:id', async (req, res) => {
     try {
-        await sql.connect(config);
-        const result = await sql.query('SELECT Email FROM Admins');
-        res.json(result.recordset.map(row => row.Email));
+        const result = await db.query('SELECT * FROM exams WHERE id = ?', [req.params.id]);
+        if (!result || result.length === 0) {
+            return res.status(404).json({ error: 'Exam not found' });
+        }
+        res.json(result[0]);
     } catch (error) {
+        console.error('Error fetching exam:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -118,61 +66,17 @@ app.get('/api/admins', async (req, res) => {
 // Add new exam
 app.post('/api/exams', async (req, res) => {
     try {
-        await sql.connect(config);
         const exam = req.body;
-        console.log('Received exam data:', exam);
-
-        const transaction = new sql.Transaction(await sql.connect(config));
-        await transaction.begin();
-
-        try {
-            // Convert field names to match database
-            const examResult = await transaction.request()
-                .input('examWeek', sql.Int, exam.examWeek)
-                .input('subject', sql.NVarChar, exam.subject)
-                .input('date', sql.Date, exam.date)
-                .input('chapters', sql.NVarChar, exam.chapters)
-                .query(`
-                    INSERT INTO Exams (ExamWeek, Subject, ExamDate, Chapters)
-                    OUTPUT 
-                        INSERTED.Id,
-                        INSERTED.ExamWeek,
-                        INSERTED.Subject,
-                        INSERTED.ExamDate,
-                        INSERTED.Chapters
-                    VALUES (@examWeek, @subject, @date, @chapters)
-                `);
-
-            const newExam = {
-                Id: examResult.recordset[0].Id,
-                ExamWeek: examResult.recordset[0].ExamWeek,
-                Subject: examResult.recordset[0].Subject,
-                ExamDate: examResult.recordset[0].ExamDate,
-                Chapters: examResult.recordset[0].Chapters,
-                resources: []
-            };
-
-            // Handle resources
-            if (exam.resources && exam.resources.length > 0) {
-                for (const resource of exam.resources) {
-                    await transaction.request()
-                        .input('examId', sql.Int, newExam.Id)
-                        .input('name', sql.NVarChar, resource.name)
-                        .input('url', sql.NVarChar, resource.url)
-                        .query(`
-                            INSERT INTO Resources (ExamId, Name, Url)
-                            VALUES (@examId, @name, @url)
-                        `);
-                    newExam.resources.push(resource);
-                }
-            }
-
-            await transaction.commit();
-            res.json(newExam);
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
-        }
+        const result = await db.query(
+            'INSERT INTO exams (subject, exam_date, chapters, resources) VALUES (?, ?, ?, ?)',
+            [
+                exam.subject,
+                exam.exam_date,
+                JSON.stringify(exam.chapters || []),
+                JSON.stringify(exam.resources || [])
+            ]
+        );
+        res.status(201).json({ id: result.insertId, ...exam });
     } catch (error) {
         console.error('Error creating exam:', error);
         res.status(500).json({ error: error.message });
@@ -182,51 +86,23 @@ app.post('/api/exams', async (req, res) => {
 // Update exam
 app.put('/api/exams/:id', async (req, res) => {
     try {
-        await sql.connect(config);
         const exam = req.body;
-        const examId = req.params.id;
-        const transaction = new sql.Transaction();
-        await transaction.begin();
-
-        try {
-            await transaction.request()
-                .input('id', sql.Int, examId)
-                .input('examWeek', sql.Int, exam.examWeek)
-                .input('subject', sql.NVarChar, exam.subject)
-                .input('date', sql.Date, new Date(exam.date))
-                .input('chapters', sql.NVarChar, exam.chapters)
-                .query(`
-                    UPDATE Exams 
-                    SET ExamWeek = @examWeek,
-                        Subject = @subject,
-                        ExamDate = @date,
-                        Chapters = @chapters,
-                        UpdatedAt = GETUTCDATE()
-                    WHERE Id = @id
-                `);
-
-            await transaction.request()
-                .input('examId', sql.Int, examId)
-                .query('DELETE FROM Resources WHERE ExamId = @examId');
-
-            for (const resource of exam.resources) {
-                await transaction.request()
-                    .input('examId', sql.Int, examId)
-                    .input('name', sql.NVarChar, resource.name)
-                    .input('url', sql.NVarChar, resource.url)
-                    .query(`
-                        INSERT INTO Resources (ExamId, Name, Url)
-                        VALUES (@examId, @name, @url)
-                    `);
-            }
-
-            await transaction.commit();
-            res.json({ success: true });
-        } catch (error) {
-            await transaction.rollback();
-            throw error;
+        const result = await db.query(
+            'UPDATE exams SET subject = ?, exam_date = ?, chapters = ?, resources = ? WHERE id = ?',
+            [
+                exam.subject,
+                exam.exam_date,
+                JSON.stringify(exam.chapters || []),
+                JSON.stringify(exam.resources || []),
+                req.params.id
+            ]
+        );
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Exam not found' });
         }
+        res.json({ id: req.params.id, ...exam });
     } catch (error) {
+        console.error('Error updating exam:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -234,45 +110,54 @@ app.put('/api/exams/:id', async (req, res) => {
 // Delete exam
 app.delete('/api/exams/:id', async (req, res) => {
     try {
-        await sql.connect(config);
-        await sql.query`DELETE FROM Exams WHERE Id = ${req.params.id}`;
+        const result = await db.query('DELETE FROM exams WHERE id = ?', [req.params.id]);
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Exam not found' });
+        }
         res.json({ success: true });
     } catch (error) {
+        console.error('Error deleting exam:', error);
         res.status(500).json({ error: error.message });
     }
 });
 
-// Add admin
-app.post('/api/admins', async (req, res) => {
-    try {
-        await sql.connect(config);
-        const { email } = req.body;
-        await sql.query`
-            IF NOT EXISTS (SELECT 1 FROM Admins WHERE Email = ${email})
-            INSERT INTO Admins (Email) VALUES (${email})
-        `;
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// ===============================
+// Authentication Endpoints
+// ===============================
+
+// Redirect /login to dashboard for public access
+app.get('/login', (req, res) => {
+    res.redirect('/');
 });
 
-// Remove admin
-app.delete('/api/admins/:email', async (req, res) => {
-    try {
-        await sql.connect(config);
-        await sql.query`
-            DELETE FROM Admins 
-            WHERE Email = ${req.params.email} 
-            AND Email != 'kangym727@gmail.com'
-        `;
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
+// Global error handler
+app.use((err, req, res, next) => {
+    console.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error' });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-}); 
+// Initialize database and start server
+async function startServer() {
+    try {
+        console.log('Starting server initialization...');
+        
+        // Initialize the database
+        await db.initializeDatabase();
+        console.log('Database initialization completed');
+        
+        // Start the server
+        app.listen(PORT, () => {
+            console.log(`Server running on port ${PORT}`);
+        });
+    } catch (err) {
+        console.error('Server initialization failed:', err);
+        process.exit(1);
+    }
+}
+
+// Start the server
+console.log('Starting application...');
+startServer();
+
+

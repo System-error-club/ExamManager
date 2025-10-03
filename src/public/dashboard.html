@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamManager - Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .main-content {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .countdown-section {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+        }
+
+        .exam-info-section {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            color: white;
+        }
+
+        .exam-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .exam-card {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            color: white;
+        }
+
+        .exam-card h3 {
+            margin-top: 0;
+            color: white;
+        }
+
+        .resources-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resources-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .resources-list a {
+            color: #ffffff;
+            text-decoration: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background-color: rgb(10, 29, 68);
+            padding: 2rem;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 0.25rem;
+        }
+
+        .btn-add {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-edit {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-delete {
+            background-color: #dc3545;
+            color: white;
+        }
+
+        .btn-cancel {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-save {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <div class="countdown-section">
+            <h2>ExamManager</h2>
+            <div id="examCountdown">Loading...</div>
+        </div>
+
+        <div class="exam-info-section">
+            <button class="btn btn-add" onclick="openAddExamModal()">Add New Exam</button>
+            <div class="exam-grid" id="examGrid">
+                <!-- Exam cards will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Exam Modal -->
+    <div id="examModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">Add New Exam</h2>
+            <form id="examForm" onsubmit="handleExamSubmit(event)">
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" required>
+                </div>
+                <div class="form-group">
+                    <label for="exam_date">Date:</label>
+                    <input type="datetime-local" id="exam_date" required>
+                </div>
+                <div class="form-group">
+                    <label for="chapters">Chapters:</label>
+                    <textarea id="chapters" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="resources">Resources (One per line, format: title|url):</label>
+                    <textarea id="resources" rows="4"></textarea>
+                </div>
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-save">Save</button>
+                </div>
+                <input type="hidden" id="examId">
+            </form>
+        </div>
+    </div>
+
+    <script src="/js/api.js"></script>
+    <script>
+        // Fetch and display exams
+        async function fetchExams() {
+            try {
+                const response = await fetch('/api/exams');
+                const exams = await response.json();
+                displayExams(exams);
+                updateCountdown(exams);
+            } catch (error) {
+                console.error('Error fetching exams:', error);
+            }
+        }
+
+        // Display exams in grid
+        function displayExams(exams) {
+            const examGrid = document.getElementById('examGrid');
+            examGrid.innerHTML = '';
+
+            exams.sort((a, b) => new Date(a.exam_date) - new Date(b.exam_date));
+
+            exams.forEach(exam => {
+                const card = document.createElement('div');
+                card.className = 'exam-card';
+                
+                const resources = exam.resources ? exam.resources.split('\n').filter(r => r.trim()) : [];
+                const resourcesList = resources.map(r => {
+                    const [title, url] = r.split('|').map(s => s.trim());
+                    return `<li><a href="${url}" target="_blank">${title}</a></li>`;
+                }).join('');
+
+                card.innerHTML = `
+                    <h3>${exam.subject}</h3>
+                    <p>Date: ${new Date(exam.exam_date).toLocaleString()}</p>
+                    <p>Chapters: ${exam.chapters}</p>
+                    ${resources.length ? `
+                        <h4>Resources:</h4>
+                        <ul class="resources-list">
+                            ${resourcesList}
+                        </ul>
+                    ` : ''}
+                    <div class="card-actions">
+                        <button class="btn btn-edit" onclick="openEditExamModal(${exam.id})">Edit</button>
+                        <button class="btn btn-delete" onclick="deleteExam(${exam.id})">Delete</button>
+                    </div>
+                `;
+                examGrid.appendChild(card);
+            });
+        }
+
+        // Update countdown
+        function updateCountdown(exams) {
+            const now = new Date();
+            const futureExams = exams.filter(exam => new Date(exam.exam_date) > now);
+            
+            if (futureExams.length === 0) {
+                document.getElementById('examCountdown').innerHTML = 'No upcoming exams';
+                return;
+            }
+
+            const nextExams = futureExams.slice(0, 3).map(exam => {
+                const timeLeft = getTimeLeft(new Date(exam.exam_date));
+                return `<div>
+                    <strong>${exam.subject}</strong>: ${timeLeft}
+                </div>`;
+            }).join('');
+
+            document.getElementById('examCountdown').innerHTML = nextExams;
+        }
+
+        function getTimeLeft(date) {
+            const now = new Date();
+            const diff = date - now;
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            
+            if (days > 0) {
+                return `${days} days, ${hours} hours`;
+            } else if (hours > 0) {
+                return `${hours} hours, ${minutes} minutes`;
+            } else {
+                return `${minutes} minutes`;
+            }
+        }
+
+        // Modal functions
+        function openAddExamModal() {
+            document.getElementById('modalTitle').textContent = 'Add New Exam';
+            document.getElementById('examForm').reset();
+            document.getElementById('examId').value = '';
+            document.getElementById('examModal').style.display = 'flex';
+        }
+
+        async function openEditExamModal(examId) {
+            try {
+                const response = await fetch(`/api/exams/${examId}`);
+                const exam = await response.json();
+                
+                document.getElementById('modalTitle').textContent = 'Edit Exam';
+                document.getElementById('subject').value = exam.subject;
+                document.getElementById('exam_date').value = exam.exam_date.slice(0, 16);
+                document.getElementById('chapters').value = exam.chapters;
+                document.getElementById('resources').value = exam.resources || '';
+                document.getElementById('examId').value = exam.id;
+                document.getElementById('examModal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error fetching exam details:', error);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('examModal').style.display = 'none';
+        }
+
+        // Handle form submission
+        async function handleExamSubmit(event) {
+            event.preventDefault();
+            const examId = document.getElementById('examId').value;
+            
+            const examData = {
+                subject: document.getElementById('subject').value,
+                exam_date: document.getElementById('exam_date').value,
+                chapters: document.getElementById('chapters').value,
+                resources: document.getElementById('resources').value
+            };
+
+            try {
+                const url = examId ? `/api/exams/${examId}` : '/api/exams';
+                const method = examId ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(examData)
+                });
+
+                if (response.ok) {
+                    closeModal();
+                    fetchExams();
+                } else {
+                    console.error('Error saving exam:', await response.text());
+                }
+            } catch (error) {
+                console.error('Error saving exam:', error);
+            }
+        }
+
+        // Delete exam
+        async function deleteExam(examId) {
+            if (!confirm('Are you sure you want to delete this exam?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/exams/${examId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    fetchExams();
+                } else {
+                    console.error('Error deleting exam:', await response.text());
+                }
+            } catch (error) {
+                console.error('Error deleting exam:', error);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchExams();
+            setInterval(fetchExams, 60000); // Update every minute
+        });
+    </script>
+</body>
+</html> 

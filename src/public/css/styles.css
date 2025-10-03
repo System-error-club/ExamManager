@@ -1,0 +1,93 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+    background: #050f3c;
+    color: #fff;
+}
+
+.navbar {
+    background: #1a237e;
+    color: white;
+    padding: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.main-content {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+}
+
+.countdown-section {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: #080f5a;
+    color: rgb(255, 255, 255);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.exam-info-section {
+    background: rgb(48, 47, 62);
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.exam-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.exam-card {
+    background: rgb(84, 89, 214);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.exam-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.btn {
+    background: #1a237e;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background: #283593;
+}
+
+.btn-add {
+    margin-right: 0.5rem;
+    background: #4caf50;
+}
+
+.btn-edit {
+    background: #2196f3;
+}
+
+.btn-delete {
+    background: #f44336;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #1a237e;
+    margin: 0.5em 0;
+}

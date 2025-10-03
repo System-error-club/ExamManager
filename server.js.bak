@@ -1,0 +1,452 @@
+const express = require('express');
+const cors = require('cors');
+const db = require('./db');
+
+const app = express();
+const path = require('path');
+
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, 'src/public')));
+
+// Serve static files from specific directories
+app.use('/css', express.static(path.join(__dirname, 'src/public/css')));
+app.use('/js', express.static(path.join(__dirname, 'src/public/js')));
+
+// CORS configuration
+app.use(cors({
+    origin: [
+        'https://system-error-club.github.io',
+        'https://kkc.kevink.tech',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    maxAge: 600
+}));
+
+app.use(express.json());
+
+// MySQL schema setup
+const createTables = async () => {
+    let connection;
+    try {
+        // Test the connection first
+        await testConnection();
+        
+        connection = await pool.getConnection();
+        
+        // Create users table
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Users table created or already exists');
+
+        // Create exams table
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS exams (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                subject VARCHAR(255) NOT NULL,
+                exam_date DATETIME NOT NULL,
+                chapters TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        console.log('Exams table created or already exists');
+
+        // Create resources table
+        await connection.execute(`
+            CREATE TABLE IF NOT EXISTS resources (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                exam_id INT,
+                title VARCHAR(255) NOT NULL,
+                url TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE
+            )
+        `);
+        console.log('Resources table created or already exists');
+
+    } catch (error) {
+        console.error('Error creating database tables:', error);
+        throw error;
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+};
+
+// Initialize database
+(async () => {
+    try {
+        await createTables();
+        console.log('Database initialization completed');
+    } catch (error) {
+        console.error('Database initialization failed:', error);
+        // Don't exit immediately, give the server a chance to start
+        // setTimeout(() => process.exit(1), 1000);
+    }
+})();
+
+// Error handling middleware
+const errorHandler = (err, req, res, next) => {
+    console.error('Error:', err);
+    
+    if (err.code === 'ETIMEDOUT' || err.code === 'ECONNREFUSED') {
+        return res.status(503).json({ 
+            error: 'Database connection failed. Please try again later.' 
+        });
+    }
+    
+    res.status(500).json({ 
+        error: 'An unexpected error occurred. Please try again later.' 
+    });
+};
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ 
+            error: 'Access denied. No token provided.' 
+        });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        req.user = decoded;
+        next();
+    } catch (error) {
+        if (error.name === 'TokenExpiredError') {
+            return res.status(401).json({ 
+                error: 'Token expired. Please log in again.' 
+            });
+        }
+        return res.status(403).json({ 
+            error: 'Invalid token. Please log in again.' 
+        });
+    }
+};
+
+// Basic test endpoint
+app.get('/api', (req, res) => {
+    res.json({ message: 'Server is running' });
+});
+
+// Route handlers for HTML pages
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/public/index.html'));
+});
+
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/public/login.html'));
+});
+
+app.get('/manage', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/public/manage.html'));
+});
+
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'src/public/dashboard.html'));
+});
+
+// Register endpoint
+app.post('/api/auth/register', async (req, res) => {
+    let connection;
+    try {
+        const { username, password, email } = req.body;
+
+        // Input validation
+        if (!username || !password || !email) {
+            return res.status(400).json({ error: 'All fields are required' });
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        connection = await pool.getConnection();
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Check if username or email already exists
+        const [existingUsers] = await connection.execute(
+            'SELECT username, email FROM users WHERE username = ? OR email = ?',
+            [username, email]
+        );
+
+        if (existingUsers.length > 0) {
+            const existing = existingUsers[0];
+            if (existing.username === username) {
+                return res.status(400).json({ error: 'Username already taken' });
+            }
+            if (existing.email === email) {
+                return res.status(400).json({ error: 'Email already registered' });
+            }
+        }
+        
+        // Create new user
+        const [result] = await connection.execute(
+            'INSERT INTO users (username, password, email) VALUES (?, ?, ?)',
+            [username, hashedPassword, email]
+        );
+        
+        const [newUser] = await connection.execute(
+            'SELECT id, username, email FROM users WHERE id = ?',
+            [result.insertId]
+        );
+        
+        res.status(201).json(newUser[0]);
+    } catch (error) {
+        console.error('Registration error:', error);
+        res.status(500).json({ error: 'Registration failed. Please try again.' });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+// Login endpoint
+app.post('/api/auth/login', async (req, res) => {
+    let connection;
+    try {
+        const { username, password } = req.body;
+
+        // Input validation
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password are required' });
+        }
+        
+        connection = await pool.getConnection();
+        const [users] = await connection.execute(
+            'SELECT * FROM users WHERE username = ?', 
+            [username]
+        );
+        
+        const user = users[0];
+        
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+        
+        const token = jwt.sign(
+            { id: user.id, username: user.username },
+            process.env.JWT_SECRET || 'your-secret-key',
+            { expiresIn: '24h' }
+        );
+        
+        res.json({ 
+            token, 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                email: user.email 
+            }
+        });
+    } catch (error) {
+        console.error('Login error:', error);
+        res.status(500).json({ error: 'Login failed. Please try again.' });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+});
+
+// Get all exams
+app.get('/api/exams', async (req, res) => {
+    try {
+        // First get all exams
+        const [exams] = await db.execute(`
+            SELECT * FROM exams
+            ORDER BY exam_date
+        `);
+
+        // Then get all resources
+        const [resources] = await db.execute(`
+            SELECT * FROM resources
+        `);
+
+        // Group resources by exam
+        const examMap = new Map();
+        exams.forEach(exam => {
+            examMap.set(exam.id, {
+                ...exam,
+                resources: []
+            });
+        });
+
+        // Add resources to their exams
+        resources.forEach(resource => {
+            const exam = examMap.get(resource.exam_id);
+            if (exam) {
+                exam.resources.push({
+                    title: resource.title,
+                    url: resource.url
+                });
+            }
+        });
+
+        res.json(Array.from(examMap.values()));
+    } catch (error) {
+        console.error('Error fetching exams:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get all admins
+app.get('/api/admins', async (req, res) => {
+    try {
+        await sql.connect(config);
+        const result = await sql.query('SELECT Email FROM Admins');
+        res.json(result.recordset.map(row => row.Email));
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Add new exam
+app.post('/api/exams', async (req, res) => {
+    try {
+        const exam = req.body;
+        console.log('Received exam data:', exam);
+
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            // Insert exam
+            const [result] = await connection.execute(
+                'INSERT INTO exams (subject, exam_date, chapters) VALUES (?, ?, ?)',
+                [exam.subject, exam.date, exam.chapters]
+            );
+
+            const examId = result.insertId;
+            const newExam = {
+                id: examId,
+                subject: exam.subject,
+                exam_date: exam.date,
+                chapters: exam.chapters,
+                resources: []
+            };
+
+            // Handle resources
+            if (exam.resources && exam.resources.length > 0) {
+                for (const resource of exam.resources) {
+                    await connection.execute(
+                        'INSERT INTO resources (exam_id, title, url) VALUES (?, ?, ?)',
+                        [examId, resource.title, resource.url]
+                    );
+                    newExam.resources.push(resource);
+                }
+            }
+
+            await connection.commit();
+            res.json(newExam);
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error('Error creating exam:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update exam
+app.put('/api/exams/:id', async (req, res) => {
+    try {
+        const exam = req.body;
+        const examId = req.params.id;
+        
+        const connection = await db.getConnection();
+        try {
+            await connection.beginTransaction();
+
+            await connection.execute(
+                `UPDATE exams 
+                SET subject = ?,
+                    exam_date = ?,
+                    chapters = ?
+                WHERE id = ?`,
+                [exam.subject, exam.date, exam.chapters, examId]
+            );
+
+            // Delete existing resources
+            await connection.execute('DELETE FROM resources WHERE exam_id = ?', [examId]);
+
+            // Add new resources
+            if (exam.resources && exam.resources.length > 0) {
+                for (const resource of exam.resources) {
+                    await connection.execute(
+                        'INSERT INTO resources (exam_id, title, url) VALUES (?, ?, ?)',
+                        [examId, resource.title, resource.url]
+                    );
+                }
+            }
+
+            await connection.commit();
+            res.json({ success: true });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete exam
+app.delete('/api/exams/:id', async (req, res) => {
+    try {
+        await db.execute('DELETE FROM exams WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get user profile
+app.get('/api/users/profile', authenticateToken, async (req, res) => {
+    try {
+        const [users] = await db.execute(
+            'SELECT id, username, email FROM users WHERE id = ?',
+            [req.user.id]
+        );
+
+        if (users.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        res.json(users[0]);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+}); 
